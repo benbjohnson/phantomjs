@@ -260,8 +260,32 @@ func (p *WebPage) SetCookies(cookies []*http.Cookie) {
 	p.ref.process.mustDoJSON("POST", "/webpage/set_cookies", req, nil)
 }
 
-func (p *WebPage) CustomHeaders() string {
-	panic("TODO")
+// CustomHeaders returns a list of additional headers sent with the web page.
+func (p *WebPage) CustomHeaders() http.Header {
+	var resp struct {
+		Value map[string]string `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/custom_headers", map[string]interface{}{"ref": p.ref.id}, &resp)
+
+	// Convert to a header object.
+	hdr := make(http.Header)
+	for key, value := range resp.Value {
+		hdr.Set(key, value)
+	}
+	return hdr
+}
+
+// SetCustomHeaders sets a list of additional headers sent with the web page.
+//
+// This function does not support multiple headers with the same name. Only
+// the first value for a header key will be used.
+func (p *WebPage) SetCustomHeaders(header http.Header) {
+	m := make(map[string]string)
+	for key := range header {
+		m[key] = header.Get(key)
+	}
+	req := map[string]interface{}{"ref": p.ref.id, "headers": m}
+	p.ref.process.mustDoJSON("POST", "/webpage/set_custom_headers", req, nil)
 }
 
 func (p *WebPage) Event() string {
@@ -638,6 +662,8 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/set_clip_rect': return handleWebpageSetClipRect(request, response);
 			case '/webpage/cookies': return handleWebpageCookies(request, response);
 			case '/webpage/set_cookies': return handleWebpageSetCookies(request, response);
+			case '/webpage/custom_headers': return handleWebpageCustomHeaders(request, response);
+			case '/webpage/set_custom_headers': return handleWebpageSetCustomHeaders(request, response);
 			case '/webpage/create': return handleWebpageCreate(request, response);
 			case '/webpage/content': return handleWebpageContent(request, response);
 			case '/webpage/open': return handleWebpageOpen(request, response);
@@ -692,6 +718,19 @@ function handleWebpageSetCookies(request, response) {
 	var msg = JSON.parse(request.post);
 	var page = ref(msg.ref);
 	page.cookies = msg.cookies;
+	response.closeGracefully();
+}
+
+function handleWebpageCustomHeaders(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.customHeaders}));
+	response.closeGracefully();
+}
+
+function handleWebpageSetCustomHeaders(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.customHeaders = msg.headers;
 	response.closeGracefully();
 }
 

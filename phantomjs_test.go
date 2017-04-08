@@ -122,6 +122,28 @@ func TestWebPage_Cookies(t *testing.T) {
 	}
 }
 
+// Ensure process can set and retrieve custom headers.
+func TestWebPage_CustomHeaders(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Test data.
+	hdr := make(http.Header)
+	hdr.Set("FOO", "BAR")
+	hdr.Set("BAZ", "BAT")
+
+	// Set the headers.
+	page.SetCustomHeaders(hdr)
+
+	// Retrieve and verify the headers.
+	if other := page.CustomHeaders(); !reflect.DeepEqual(other, hdr) {
+		t.Fatalf("unexpected value: %#v", other)
+	}
+}
+
 // Process is a test wrapper for phantomjs.Process.
 type Process struct {
 	*phantomjs.Process
