@@ -236,8 +236,28 @@ func (p *WebPage) Content() string {
 	return resp.Value
 }
 
-func (p *WebPage) Cookies() string {
-	panic("TODO")
+// Cookies returns a list of cookies visible to the current URL.
+func (p *WebPage) Cookies() []*http.Cookie {
+	var resp struct {
+		Value []cookieJSON `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/cookies", map[string]interface{}{"ref": p.ref.id}, &resp)
+
+	a := make([]*http.Cookie, len(resp.Value))
+	for i := range resp.Value {
+		a[i] = decodeCookieJSON(resp.Value[i])
+	}
+	return a
+}
+
+// SetCookies sets a list of cookies visible to the current URL.
+func (p *WebPage) SetCookies(cookies []*http.Cookie) {
+	a := make([]cookieJSON, len(cookies))
+	for i := range cookies {
+		a[i] = encodeCookieJSON(cookies[i])
+	}
+	req := map[string]interface{}{"ref": p.ref.id, "cookies": a}
+	p.ref.process.mustDoJSON("POST", "/webpage/set_cookies", req, nil)
 }
 
 func (p *WebPage) CustomHeaders() string {
@@ -545,6 +565,57 @@ type rectJSON struct {
 	Height int `json:"height"`
 }
 
+// cookieJSON is a struct for encoding http.Cookie objects as JSON.
+type cookieJSON struct {
+	Domain   string `json:"domain"`
+	Expires  string `json:"expires"`
+	Expiry   int    `json:"expiry"`
+	HttpOnly bool   `json:"httponly"`
+	Name     string `json:"name"`
+	Path     string `json:"path"`
+	Secure   bool   `json:"secure"`
+	Value    string `json:"value"`
+}
+
+func encodeCookieJSON(v *http.Cookie) cookieJSON {
+	out := cookieJSON{
+		Domain:   v.Domain,
+		HttpOnly: v.HttpOnly,
+		Name:     v.Name,
+		Path:     v.Path,
+		Secure:   v.Secure,
+		Value:    v.Value,
+	}
+
+	if !v.Expires.IsZero() {
+		out.Expires = v.Expires.UTC().Format(http.TimeFormat)
+	}
+	return out
+}
+
+func decodeCookieJSON(v cookieJSON) *http.Cookie {
+	out := &http.Cookie{
+		Domain:     v.Domain,
+		RawExpires: v.Expires,
+		HttpOnly:   v.HttpOnly,
+		Name:       v.Name,
+		Path:       v.Path,
+		Secure:     v.Secure,
+		Value:      v.Value,
+	}
+
+	if v.Expires != "" {
+		expires, err := time.Parse(http.TimeFormat, v.Expires)
+		if err != nil {
+			panic(err)
+		}
+		out.Expires = expires
+		out.RawExpires = v.Expires
+	}
+
+	return out
+}
+
 // shim is the included javascript used to communicate with PhantomJS.
 const shim = `
 var system = require("system")
@@ -565,6 +636,8 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/can_go_forward': return handleWebpageCanGoForward(request, response);
 			case '/webpage/clip_rect': return handleWebpageClipRect(request, response);
 			case '/webpage/set_clip_rect': return handleWebpageSetClipRect(request, response);
+			case '/webpage/cookies': return handleWebpageCookies(request, response);
+			case '/webpage/set_cookies': return handleWebpageSetCookies(request, response);
 			case '/webpage/create': return handleWebpageCreate(request, response);
 			case '/webpage/content': return handleWebpageContent(request, response);
 			case '/webpage/open': return handleWebpageOpen(request, response);
@@ -606,6 +679,19 @@ function handleWebpageSetClipRect(request, response) {
 	var msg = JSON.parse(request.post);
 	var page = ref(msg.ref);
 	page.clipRect = msg.rect;
+	response.closeGracefully();
+}
+
+function handleWebpageCookies(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.cookies}));
+	response.closeGracefully();
+}
+
+function handleWebpageSetCookies(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.cookies = msg.cookies;
 	response.closeGracefully();
 }
 
