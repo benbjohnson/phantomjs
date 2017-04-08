@@ -55,28 +55,6 @@ func TestWebPage_ClipRect(t *testing.T) {
 	}
 }
 
-// Ensure web page can return its contents.
-func TestWebPage_Content(t *testing.T) {
-	// Serve web page.
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("<html><body>OK</body></html>"))
-	}))
-	defer srv.Close()
-
-	// Start process.
-	p := MustOpenNewProcess()
-	defer p.MustClose()
-
-	// Create & open page.
-	page := p.CreateWebPage()
-	defer page.Close()
-	if err := page.Open(srv.URL); err != nil {
-		t.Fatal(err)
-	} else if content := page.Content(); content != `<html><head></head><body>OK</body></html>` {
-		t.Fatalf("unexpected content: %q", content)
-	}
-}
-
 // Ensure process can set and retrieve cookies.
 func TestWebPage_Cookies(t *testing.T) {
 	p := MustOpenNewProcess()
@@ -141,6 +119,307 @@ func TestWebPage_CustomHeaders(t *testing.T) {
 	// Retrieve and verify the headers.
 	if other := page.CustomHeaders(); !reflect.DeepEqual(other, hdr) {
 		t.Fatalf("unexpected value: %#v", other)
+	}
+}
+
+// Ensure web page can return the name of the currently focused frame.
+func TestWebPage_FocusedFrameName(t *testing.T) {
+	// Mock external HTTP server.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			w.Write([]byte(`<html><frameset rows="*,*"><frame name="FRAME1" src="/frame1.html"/><frame name="FRAME2" src="/frame2.html"/></frameset></html>`))
+		case "/frame1.html":
+			w.Write([]byte(`<html><body>FRAME 1</body></html>`))
+		case "/frame2.html":
+			w.Write([]byte(`<html><body><input autofocus/></body></html>`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	// Start process.
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	// Create & open page.
+	page := p.CreateWebPage()
+	defer page.Close()
+	if err := page.Open(srv.URL); err != nil {
+		t.Fatal(err)
+	}
+
+	// Retrieve the focused frame.
+	if other := page.FocusedFrameName(); other != "FRAME2" {
+		t.Fatalf("unexpected value: %#v", other)
+	}
+}
+
+// Ensure web page can set and retrieve frame content.
+func TestWebPage_FrameContent(t *testing.T) {
+	// Mock external HTTP server.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			w.Write([]byte(`<html><frameset rows="*,*"><frame name="FRAME1" src="/frame1.html"/><frame name="FRAME2" src="/frame2.html"/></frameset></html>`))
+		case "/frame1.html":
+			w.Write([]byte(`<html><body>FOO</body></html>`))
+		case "/frame2.html":
+			w.Write([]byte(`<html><body>BAR</body></html>`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	// Start process.
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	// Create & open page.
+	page := p.CreateWebPage()
+	defer page.Close()
+	if err := page.Open(srv.URL); err != nil {
+		t.Fatal(err)
+	}
+
+	// Switch to frame and update content.
+	page.SwitchToFrameName("FRAME2")
+	page.SetFrameContent(`<html><body>NEW CONTENT</body></html>`)
+
+	if other := page.FrameContent(); other != `<html><head></head><body>NEW CONTENT</body></html>` {
+		t.Fatalf("unexpected value: %#v", other)
+	}
+}
+
+// Ensure web page can retrieve the current frame name.
+func TestWebPage_FrameName(t *testing.T) {
+	// Mock external HTTP server.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			w.Write([]byte(`<html><frameset rows="*,*"><frame name="FRAME1" src="/frame1.html"/><frame name="FRAME2" src="/frame2.html"/></frameset></html>`))
+		case "/frame1.html":
+			w.Write([]byte(`<html><body>FOO</body></html>`))
+		case "/frame2.html":
+			w.Write([]byte(`<html><body>BAR</body></html>`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	// Start process.
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	// Create & open page.
+	page := p.CreateWebPage()
+	defer page.Close()
+	if err := page.Open(srv.URL); err != nil {
+		t.Fatal(err)
+	}
+
+	// Switch to frame and retrieve name.
+	page.SwitchToFrameName("FRAME2")
+	if other := page.FrameName(); other != `FRAME2` {
+		t.Fatalf("unexpected value: %#v", other)
+	}
+}
+
+// Ensure web page can retrieve frame content as plain text.
+func TestWebPage_FramePlainText(t *testing.T) {
+	// Mock external HTTP server.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			w.Write([]byte(`<html><frameset rows="*,*"><frame name="FRAME1" src="/frame1.html"/><frame name="FRAME2" src="/frame2.html"/></frameset></html>`))
+		case "/frame1.html":
+			w.Write([]byte(`<html><body>FOO</body></html>`))
+		case "/frame2.html":
+			w.Write([]byte(`<html><body>BAR</body></html>`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	// Start process.
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	// Create & open page.
+	page := p.CreateWebPage()
+	defer page.Close()
+	if err := page.Open(srv.URL); err != nil {
+		t.Fatal(err)
+	}
+
+	// Switch to frame and update content.
+	page.SwitchToFrameName("FRAME2")
+	if other := page.FramePlainText(); other != `BAR` {
+		t.Fatalf("unexpected value: %#v", other)
+	}
+}
+
+// Ensure web page can retrieve the frame title.
+func TestWebPage_FrameTitle(t *testing.T) {
+	// Mock external HTTP server.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			w.Write([]byte(`<html><frameset rows="*,*"><frame name="FRAME1" src="/frame1.html"/><frame name="FRAME2" src="/frame2.html"/></frameset></html>`))
+		case "/frame1.html":
+			w.Write([]byte(`<html><body>FOO</body></html>`))
+		case "/frame2.html":
+			w.Write([]byte(`<html><head><title>TEST TITLE</title><body>BAR</body></html>`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	// Start process.
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	// Create & open page.
+	page := p.CreateWebPage()
+	defer page.Close()
+	if err := page.Open(srv.URL); err != nil {
+		t.Fatal(err)
+	}
+
+	// Switch to frame and verify title.
+	page.SwitchToFrameName("FRAME2")
+	if other := page.FrameTitle(); other != `TEST TITLE` {
+		t.Fatalf("unexpected value: %#v", other)
+	}
+}
+
+// Ensure web page can retrieve the frame URL.
+func TestWebPage_FrameURL(t *testing.T) {
+	// Mock external HTTP server.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			w.Write([]byte(`<html><frameset rows="*,*"><frame name="FRAME1" src="/frame1.html"/><frame name="FRAME2" src="/frame2.html"/></frameset></html>`))
+		case "/frame1.html":
+			w.Write([]byte(`<html><body>FOO</body></html>`))
+		case "/frame2.html":
+			w.Write([]byte(`<html><body>BAR</body></html>`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	// Start process.
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	// Create & open page.
+	page := p.CreateWebPage()
+	defer page.Close()
+	if err := page.Open(srv.URL); err != nil {
+		t.Fatal(err)
+	}
+
+	// Switch to frame and verify title.
+	page.SwitchToFramePosition(1)
+	if other := page.FrameURL(); other != srv.URL+`/frame2.html` {
+		t.Fatalf("unexpected value: %#v", other)
+	}
+}
+
+// Ensure web page can retrieve the total frame count.
+func TestWebPage_FrameCount(t *testing.T) {
+	// Mock external HTTP server.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			w.Write([]byte(`<html><frameset rows="*,*"><frame name="FRAME1" src="/frame1.html"/><frame name="FRAME2" src="/frame2.html"/></frameset></html>`))
+		case "/frame1.html":
+			w.Write([]byte(`<html><body>FOO</body></html>`))
+		case "/frame2.html":
+			w.Write([]byte(`<html><body>BAR</body></html>`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	// Start process.
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	// Create & open page.
+	page := p.CreateWebPage()
+	defer page.Close()
+	if err := page.Open(srv.URL); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify frame count.
+	if n := page.FrameCount(); n != 2 {
+		t.Fatalf("unexpected value: %#v", n)
+	}
+}
+
+// Ensure web page can retrieve a list of frame names.
+func TestWebPage_FrameNames(t *testing.T) {
+	// Mock external HTTP server.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			w.Write([]byte(`<html><frameset rows="*,*"><frame name="FRAME1" src="/frame1.html"/><frame name="FRAME2" src="/frame2.html"/></frameset></html>`))
+		case "/frame1.html":
+			w.Write([]byte(`<html><body>FOO</body></html>`))
+		case "/frame2.html":
+			w.Write([]byte(`<html><body>BAR</body></html>`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	// Start process.
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	// Create & open page.
+	page := p.CreateWebPage()
+	defer page.Close()
+	if err := page.Open(srv.URL); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify frame count.
+	if other := page.FrameNames(); !reflect.DeepEqual(other, []string{"FRAME1", "FRAME2"}) {
+		t.Fatalf("unexpected value: %#v", other)
+	}
+}
+
+// Ensure web page can open a URL.
+func TestWebPage_Open(t *testing.T) {
+	// Serve web page.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("<html><body>OK</body></html>"))
+	}))
+	defer srv.Close()
+
+	// Start process.
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	// Create & open page.
+	page := p.CreateWebPage()
+	defer page.Close()
+	if err := page.Open(srv.URL); err != nil {
+		t.Fatal(err)
+	} else if content := page.Content(); content != `<html><head></head><body>OK</body></html>` {
+		t.Fatalf("unexpected content: %q", content)
 	}
 }
 

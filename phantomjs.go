@@ -143,7 +143,7 @@ func (p *Process) mustDoJSON(method, path string, req, resp interface{}) {
 
 	// Check response code.
 	if httpResponse.StatusCode == http.StatusNotFound {
-		panic(errors.New("not found"))
+		panic(fmt.Errorf("not found: %s", path))
 	} else if httpResponse.StatusCode == http.StatusInternalServerError {
 		body, _ := ioutil.ReadAll(httpResponse.Body)
 		panic(errors.New(string(body)))
@@ -236,6 +236,11 @@ func (p *WebPage) Content() string {
 	return resp.Value
 }
 
+// SetContent sets the content of the webpage.
+func (p *WebPage) SetContent(content string) {
+	p.ref.process.mustDoJSON("POST", "/webpage/set_content", map[string]interface{}{"ref": p.ref.id, "content": content}, nil)
+}
+
 // Cookies returns a list of cookies visible to the current URL.
 func (p *WebPage) Cookies() []*http.Cookie {
 	var resp struct {
@@ -288,40 +293,81 @@ func (p *WebPage) SetCustomHeaders(header http.Header) {
 	p.ref.process.mustDoJSON("POST", "/webpage/set_custom_headers", req, nil)
 }
 
-func (p *WebPage) Event() string {
-	panic("TODO")
-}
-
+// FocusedFrameName returns the name of the currently focused frame.
 func (p *WebPage) FocusedFrameName() string {
-	panic("TODO")
+	var resp struct {
+		Value string `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/focused_frame_name", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Value
 }
 
+// FrameContent returns the content of the current frame.
 func (p *WebPage) FrameContent() string {
-	panic("TODO")
+	var resp struct {
+		Value string `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/frame_content", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Value
 }
 
+// SetFrameContent sets the content of the current frame.
+func (p *WebPage) SetFrameContent(content string) {
+	p.ref.process.mustDoJSON("POST", "/webpage/set_frame_content", map[string]interface{}{"ref": p.ref.id, "content": content}, nil)
+}
+
+// FrameName returns the name of the current frame.
 func (p *WebPage) FrameName() string {
-	panic("TODO")
+	var resp struct {
+		Value string `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/frame_name", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Value
 }
 
+// FramePlainText returns the plain text representation of the current frame content.
 func (p *WebPage) FramePlainText() string {
-	panic("TODO")
+	var resp struct {
+		Value string `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/frame_plain_text", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Value
 }
 
+// FrameTitle returns the title of the current frame.
 func (p *WebPage) FrameTitle() string {
-	panic("TODO")
+	var resp struct {
+		Value string `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/frame_title", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Value
 }
 
-func (p *WebPage) FrameUrl() string {
-	panic("TODO")
+// FrameURL returns the URL of the current frame.
+func (p *WebPage) FrameURL() string {
+	var resp struct {
+		Value string `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/frame_url", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Value
 }
 
-func (p *WebPage) FramesCount() string {
-	panic("TODO")
+// FrameCount returns the total number of frames.
+func (p *WebPage) FrameCount() int {
+	var resp struct {
+		Value int `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/frame_count", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Value
 }
 
-func (p *WebPage) FramesName() string {
-	panic("TODO")
+// FrameNames returns an list of frame names.
+func (p *WebPage) FrameNames() []string {
+	var resp struct {
+		Value []string `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/frame_names", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Value
 }
 
 func (p *WebPage) LibraryPath() string {
@@ -515,7 +561,7 @@ func (p *WebPage) SendEvent() {
 	panic("TODO")
 }
 
-func (p *WebPage) SetContent() {
+func (p *WebPage) SetContentAndURL() {
 	panic("TODO")
 }
 
@@ -531,8 +577,14 @@ func (p *WebPage) SwitchToFocusedFrame() {
 	panic("TODO")
 }
 
-func (p *WebPage) SwitchToFrame() {
-	panic("TODO")
+// SwitchToFrameName changes focus to the named frame.
+func (p *WebPage) SwitchToFrameName(name string) {
+	p.ref.process.mustDoJSON("POST", "/webpage/switch_to_frame_name", map[string]interface{}{"ref": p.ref.id, "name": name}, nil)
+}
+
+// SwitchToFramePosition changes focus to a frame at the given position.
+func (p *WebPage) SwitchToFramePosition(pos int) {
+	p.ref.process.mustDoJSON("POST", "/webpage/switch_to_frame_position", map[string]interface{}{"ref": p.ref.id, "position": pos}, nil)
 }
 
 func (p *WebPage) SwitchToMainFrame() {
@@ -666,6 +718,18 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/set_custom_headers': return handleWebpageSetCustomHeaders(request, response);
 			case '/webpage/create': return handleWebpageCreate(request, response);
 			case '/webpage/content': return handleWebpageContent(request, response);
+			case '/webpage/set_content': return handleWebpageSetContent(request, response);
+			case '/webpage/focused_frame_name': return handleWebpageFocusedFrameName(request, response);
+			case '/webpage/frame_content': return handleWebpageFrameContent(request, response);
+			case '/webpage/set_frame_content': return handleWebpageSetFrameContent(request, response);
+			case '/webpage/frame_name': return handleWebpageFrameName(request, response);
+			case '/webpage/frame_plain_text': return handleWebpageFramePlainText(request, response);
+			case '/webpage/frame_title': return handleWebpageFrameTitle(request, response);
+			case '/webpage/frame_url': return handleWebpageFrameURL(request, response);
+			case '/webpage/frame_count': return handleWebpageFrameCount(request, response);
+			case '/webpage/frame_names': return handleWebpageFrameNames(request, response);
+			case '/webpage/switch_to_frame_name': return handleWebpageSwitchToFrameName(request, response);
+			case '/webpage/switch_to_frame_position': return handleWebpageSwitchToFramePosition(request, response);
 			case '/webpage/open': return handleWebpageOpen(request, response);
 			case '/webpage/close': return handleWebpageClose(request, response);
 			default: return handleNotFound(request, response);
@@ -751,8 +815,85 @@ function handleWebpageOpen(request, response) {
 }
 
 function handleWebpageContent(request, response) {
-	var page = ref(JSON.parse(request.post).ref)
+	var page = ref(JSON.parse(request.post).ref);
 	response.write(JSON.stringify({value: page.content}));
+	response.closeGracefully();
+}
+
+function handleWebpageSetContent(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.content = msg.content;
+	response.closeGracefully();
+}
+
+function handleWebpageFocusedFrameName(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.focusedFrameName}));
+	response.closeGracefully();
+}
+
+function handleWebpageFrameContent(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.frameContent}));
+	response.closeGracefully();
+}
+
+function handleWebpageSetFrameContent(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.frameContent = msg.content;
+	response.closeGracefully();
+}
+
+function handleWebpageFrameName(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.frameName}));
+	response.closeGracefully();
+}
+
+function handleWebpageFramePlainText(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.framePlainText}));
+	response.closeGracefully();
+}
+
+function handleWebpageFrameTitle(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.frameTitle}));
+	response.closeGracefully();
+}
+
+function handleWebpageFrameURL(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.frameUrl}));
+	response.closeGracefully();
+}
+
+function handleWebpageFrameCount(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.framesCount}));
+	response.closeGracefully();
+}
+
+function handleWebpageFrameNames(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.framesName}));
+	response.closeGracefully();
+}
+
+
+function handleWebpageSwitchToFrameName(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.switchToFrame(msg.name);
+	response.closeGracefully();
+}
+
+function handleWebpageSwitchToFramePosition(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.switchToFrame(msg.position);
 	response.closeGracefully();
 }
 
