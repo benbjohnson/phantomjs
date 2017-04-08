@@ -423,8 +423,13 @@ func (p *WebPage) LibraryPath() string {
 	var resp struct {
 		Value string `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/frame_url", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/library_path", map[string]interface{}{"ref": p.ref.id}, &resp)
 	return resp.Value
+}
+
+// SetLibraryPath sets the library path used by InjectJS().
+func (p *WebPage) SetLibraryPath(path string) {
+	p.ref.process.mustDoJSON("POST", "/webpage/set_library_path", map[string]interface{}{"ref": p.ref.id, "path": path}, nil)
 }
 
 func (p *WebPage) NavigationLocked() string {
@@ -747,6 +752,8 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/frame_url': return handleWebpageFrameURL(request, response);
 			case '/webpage/frame_count': return handleWebpageFrameCount(request, response);
 			case '/webpage/frame_names': return handleWebpageFrameNames(request, response);
+			case '/webpage/library_path': return handleWebpageLibraryPath(request, response);
+			case '/webpage/set_library_path': return handleWebpageSetLibraryPath(request, response);
 			case '/webpage/switch_to_frame_name': return handleWebpageSwitchToFrameName(request, response);
 			case '/webpage/switch_to_frame_position': return handleWebpageSwitchToFramePosition(request, response);
 			case '/webpage/open': return handleWebpageOpen(request, response);
@@ -901,6 +908,18 @@ function handleWebpageFrameNames(request, response) {
 	response.closeGracefully();
 }
 
+function handleWebpageLibraryPath(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.libraryPath}));
+	response.closeGracefully();
+}
+
+function handleWebpageSetLibraryPath(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.libraryPath = msg.path;
+	response.closeGracefully();
+}
 
 function handleWebpageSwitchToFrameName(request, response) {
 	var msg = JSON.parse(request.post);

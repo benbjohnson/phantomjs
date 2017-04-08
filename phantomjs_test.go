@@ -401,6 +401,26 @@ func TestWebPage_FrameNames(t *testing.T) {
 	}
 }
 
+// Ensure process can set and retrieve the library path.
+func TestWebPage_LibraryPath(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Verify initial path is equal to process path.
+	if v := page.LibraryPath(); v != p.Path() {
+		t.Fatalf("unexpected path: %s", v)
+	}
+
+	// Set the library path & verify it changed.
+	page.SetLibraryPath("/tmp")
+	if v := page.LibraryPath(); v != `/tmp` {
+		t.Fatalf("unexpected path: %s", v)
+	}
+}
+
 // Ensure web page can open a URL.
 func TestWebPage_Open(t *testing.T) {
 	// Serve web page.
