@@ -432,8 +432,18 @@ func (p *WebPage) SetLibraryPath(path string) {
 	p.ref.process.mustDoJSON("POST", "/webpage/set_library_path", map[string]interface{}{"ref": p.ref.id, "path": path}, nil)
 }
 
-func (p *WebPage) NavigationLocked() string {
-	panic("TODO")
+// NavigationLocked returns true if the navigation away from the page is disabled.
+func (p *WebPage) NavigationLocked() bool {
+	var resp struct {
+		Value bool `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/navigation_locked", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Value
+}
+
+// SetNavigationLocked sets whether navigation away from the page should be disabled.
+func (p *WebPage) SetNavigationLocked(value bool) {
+	p.ref.process.mustDoJSON("POST", "/webpage/set_navigation_locked", map[string]interface{}{"ref": p.ref.id, "value": value}, nil)
 }
 
 func (p *WebPage) OfflineStoragePath() string {
@@ -754,6 +764,8 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/frame_names': return handleWebpageFrameNames(request, response);
 			case '/webpage/library_path': return handleWebpageLibraryPath(request, response);
 			case '/webpage/set_library_path': return handleWebpageSetLibraryPath(request, response);
+			case '/webpage/navigation_locked': return handleWebpageNavigationLocked(request, response);
+			case '/webpage/set_navigation_locked': return handleWebpageSetNavigationLocked(request, response);
 			case '/webpage/switch_to_frame_name': return handleWebpageSwitchToFrameName(request, response);
 			case '/webpage/switch_to_frame_position': return handleWebpageSwitchToFramePosition(request, response);
 			case '/webpage/open': return handleWebpageOpen(request, response);
@@ -918,6 +930,19 @@ function handleWebpageSetLibraryPath(request, response) {
 	var msg = JSON.parse(request.post);
 	var page = ref(msg.ref);
 	page.libraryPath = msg.path;
+	response.closeGracefully();
+}
+
+function handleWebpageNavigationLocked(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.navigationLocked}));
+	response.closeGracefully();
+}
+
+function handleWebpageSetNavigationLocked(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.navigationLocked = msg.value;
 	response.closeGracefully();
 }
 

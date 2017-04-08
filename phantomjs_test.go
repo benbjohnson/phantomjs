@@ -421,6 +421,21 @@ func TestWebPage_LibraryPath(t *testing.T) {
 	}
 }
 
+// Ensure process can set and retrieve whether the navigation is locked.
+func TestWebPage_NavigationLocked(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Set the navigation lock & verify it changed.
+	page.SetNavigationLocked(true)
+	if !page.NavigationLocked() {
+		t.Fatal("expected navigation locked")
+	}
+}
+
 // Ensure web page can open a URL.
 func TestWebPage_Open(t *testing.T) {
 	// Serve web page.
