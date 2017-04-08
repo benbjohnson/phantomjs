@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 )
 
@@ -45,6 +46,52 @@ func NewProcess() *Process {
 	}
 }
 
+// Path returns a temporary path that the process is run from.
+func (p *Process) Path() string {
+	return p.path
+}
+
+// Open start the phantomjs process with the shim script.
+func (p *Process) Open() error {
+	if err := func() error {
+		// Generate temporary path to run script from.
+		path, err := ioutil.TempDir("", "phantomjs-")
+		if err != nil {
+			return err
+		}
+		p.path = path
+
+		// Write shim script.
+		scriptPath := filepath.Join(path, "shim.js")
+		if err := ioutil.WriteFile(scriptPath, []byte(shim), 0600); err != nil {
+			return err
+		}
+
+		// Start external process.
+		cmd := exec.Command(p.BinPath, scriptPath)
+		cmd.Dir = p.Path()
+		cmd.Env = []string{fmt.Sprintf("PORT=%d", p.Port)}
+		cmd.Stdout = p.Stdout
+		cmd.Stderr = p.Stderr
+		if err := cmd.Start(); err != nil {
+			return err
+		}
+		p.cmd = cmd
+
+		// Wait until process is available.
+		if err := p.wait(); err != nil {
+			return err
+		}
+		return nil
+
+	}(); err != nil {
+		p.Close()
+		return err
+	}
+
+	return nil
+}
+
 // Close stops the process.
 func (p *Process) Close() (err error) {
 	// Kill process.
@@ -57,7 +104,7 @@ func (p *Process) Close() (err error) {
 
 	// Remove shim file.
 	if p.path != "" {
-		if e := os.Remove(p.path); e != nil && err == nil {
+		if e := os.RemoveAll(p.path); e != nil && err == nil {
 			err = e
 		}
 	}
@@ -370,8 +417,14 @@ func (p *WebPage) FrameNames() []string {
 	return resp.Value
 }
 
+// LibraryPath returns the path used by InjectJS() to resolve scripts.
+// Initially it is set to Process.Path().
 func (p *WebPage) LibraryPath() string {
-	panic("TODO")
+	var resp struct {
+		Value string `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/frame_url", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Value
 }
 
 func (p *WebPage) NavigationLocked() string {
@@ -501,40 +554,6 @@ func (p *WebPage) InjectJs() {
 
 func (p *WebPage) OpenUrl() {
 	panic("TODO")
-}
-
-// Open start the phantomjs process with the shim script.
-func (p *Process) Open() error {
-	// Write shim to a temporary file.
-	f, err := ioutil.TempFile("", "phantomjs-")
-	if err != nil {
-		return err
-	} else if _, err := f.WriteString(shim); err != nil {
-		f.Close()
-		os.Remove(f.Name())
-		return err
-	} else if err := f.Close(); err != nil {
-		os.Remove(f.Name())
-		return err
-	}
-	p.path = f.Name()
-
-	// Start external process.
-	cmd := exec.Command(p.BinPath, p.path)
-	cmd.Env = []string{fmt.Sprintf("PORT=%d", p.Port)}
-	cmd.Stdout = p.Stdout
-	cmd.Stderr = p.Stderr
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-	p.cmd = cmd
-
-	// Wait until process is available.
-	if err := p.wait(); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (p *WebPage) Release() {
