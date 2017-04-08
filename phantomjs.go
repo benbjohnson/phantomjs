@@ -446,12 +446,22 @@ func (p *WebPage) SetNavigationLocked(value bool) {
 	p.ref.process.mustDoJSON("POST", "/webpage/set_navigation_locked", map[string]interface{}{"ref": p.ref.id, "value": value}, nil)
 }
 
+// OfflineStoragePath returns the path used by offline storage.
 func (p *WebPage) OfflineStoragePath() string {
-	panic("TODO")
+	var resp struct {
+		Value string `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/offline_storage_path", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Value
 }
 
-func (p *WebPage) OfflineStorageQuota() string {
-	panic("TODO")
+// OfflineStorageQuota returns the number of bytes that can be used for offline storage.
+func (p *WebPage) OfflineStorageQuota() int {
+	var resp struct {
+		Value int `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/offline_storage_quota", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Value
 }
 
 func (p *WebPage) OwnsPages() string {
@@ -766,6 +776,9 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/set_library_path': return handleWebpageSetLibraryPath(request, response);
 			case '/webpage/navigation_locked': return handleWebpageNavigationLocked(request, response);
 			case '/webpage/set_navigation_locked': return handleWebpageSetNavigationLocked(request, response);
+			case '/webpage/offline_storage_path': return handleWebpageOfflineStoragePath(request, response);
+			case '/webpage/offline_storage_quota': return handleWebpageOfflineStorageQuota(request, response);
+			case '/webpage/set_offline_storage_quota': return handleWebpageSetOfflineStorageQuota(request, response);
 			case '/webpage/switch_to_frame_name': return handleWebpageSwitchToFrameName(request, response);
 			case '/webpage/switch_to_frame_position': return handleWebpageSwitchToFramePosition(request, response);
 			case '/webpage/open': return handleWebpageOpen(request, response);
@@ -943,6 +956,18 @@ function handleWebpageSetNavigationLocked(request, response) {
 	var msg = JSON.parse(request.post);
 	var page = ref(msg.ref);
 	page.navigationLocked = msg.value;
+	response.closeGracefully();
+}
+
+function handleWebpageOfflineStoragePath(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.offlineStoragePath}));
+	response.closeGracefully();
+}
+
+function handleWebpageOfflineStorageQuota(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.offlineStorageQuota}));
 	response.closeGracefully();
 }
 

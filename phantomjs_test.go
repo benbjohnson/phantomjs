@@ -436,6 +436,34 @@ func TestWebPage_NavigationLocked(t *testing.T) {
 	}
 }
 
+// Ensure process can retrieve the offline storage path.
+func TestWebPage_OfflineStoragePath(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Retrieve storage path and ensure it's not blank.
+	if v := page.OfflineStoragePath(); v == `` {
+		t.Fatal("expected path")
+	}
+}
+
+// Ensure process can set and retrieve the offline storage quota.
+func TestWebPage_OfflineStorageQuota(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Retrieve storage quota and ensure it's non-zero.
+	if v := page.OfflineStorageQuota(); v == 0 {
+		t.Fatal("expected quota")
+	}
+}
+
 // Ensure web page can open a URL.
 func TestWebPage_Open(t *testing.T) {
 	// Serve web page.
