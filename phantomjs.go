@@ -464,11 +464,21 @@ func (p *WebPage) OfflineStorageQuota() int {
 	return resp.Value
 }
 
-func (p *WebPage) OwnsPages() string {
-	panic("TODO")
+// OwnsPages returns true if this page owns pages opened in other windows.
+func (p *WebPage) OwnsPages() bool {
+	var resp struct {
+		Value bool `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/owns_pages", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Value
 }
 
-func (p *WebPage) PagesWindowName() string {
+// SetOwnsPages sets whether this page owns pages opened in other windows.
+func (p *WebPage) SetOwnsPages(v bool) {
+	p.ref.process.mustDoJSON("POST", "/webpage/set_owns_pages", map[string]interface{}{"ref": p.ref.id, "value": v}, nil)
+}
+
+func (p *WebPage) PageWindowNames() string {
 	panic("TODO")
 }
 
@@ -779,6 +789,9 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/offline_storage_path': return handleWebpageOfflineStoragePath(request, response);
 			case '/webpage/offline_storage_quota': return handleWebpageOfflineStorageQuota(request, response);
 			case '/webpage/set_offline_storage_quota': return handleWebpageSetOfflineStorageQuota(request, response);
+			case '/webpage/owns_pages': return handleWebpageOwnsPages(request, response);
+			case '/webpage/set_owns_pages': return handleWebpageSetOwnsPages(request, response);
+			
 			case '/webpage/switch_to_frame_name': return handleWebpageSwitchToFrameName(request, response);
 			case '/webpage/switch_to_frame_position': return handleWebpageSwitchToFramePosition(request, response);
 			case '/webpage/open': return handleWebpageOpen(request, response);
@@ -970,6 +983,20 @@ function handleWebpageOfflineStorageQuota(request, response) {
 	response.write(JSON.stringify({value: page.offlineStorageQuota}));
 	response.closeGracefully();
 }
+
+function handleWebpageOwnsPages(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.ownsPages}));
+	response.closeGracefully();
+}
+
+function handleWebpageSetOwnsPages(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.ownsPages = msg.value;
+	response.closeGracefully();
+}
+
 
 function handleWebpageSwitchToFrameName(request, response) {
 	var msg = JSON.parse(request.post);

@@ -464,6 +464,21 @@ func TestWebPage_OfflineStorageQuota(t *testing.T) {
 	}
 }
 
+// Ensure process can set and retrieve whether the page owns other opened pages.
+func TestWebPage_OwnsPages(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Set value & verify it changed.
+	page.SetOwnsPages(true)
+	if !page.OwnsPages() {
+		t.Fatal("expected true")
+	}
+}
+
 // Ensure web page can open a URL.
 func TestWebPage_Open(t *testing.T) {
 	// Serve web page.
