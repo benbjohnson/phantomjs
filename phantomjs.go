@@ -651,16 +651,9 @@ func (p *WebPage) AddCookie(cookie *http.Cookie) bool {
 	return resp.ReturnValue
 }
 
-func (p *WebPage) ChildFramesCount() {
-	panic("TODO")
-}
-
-func (p *WebPage) ChildFramesName() {
-	panic("TODO")
-}
-
+// ClearCookies deletes all cookies visible to the current URL.
 func (p *WebPage) ClearCookies() {
-	panic("TODO")
+	p.ref.process.mustDoJSON("POST", "/webpage/ClearCookies", map[string]interface{}{"ref": p.ref.id}, nil)
 }
 
 // Close releases the web page and its resources.
@@ -1049,6 +1042,7 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/SetZoomFactor': return handleWebpageSetZoomFactor(request, response);
 
 			case '/webpage/AddCookie': return handleWebpageAddCookie(request, response);
+			case '/webpage/ClearCookies': return handleWebpageClearCookies(request, response);
 			case '/webpage/SwitchToFrameName': return handleWebpageSwitchToFrameName(request, response);
 			case '/webpage/SwitchToFramePosition': return handleWebpageSwitchToFramePosition(request, response);
 			case '/webpage/Open': return handleWebpageOpen(request, response);
@@ -1365,6 +1359,13 @@ function handleWebpageAddCookie(request, response) {
 	var page = ref(msg.ref);
 	var returnValue = page.addCookie(msg.cookie);
 	response.write(JSON.stringify({returnValue: returnValue}));
+	response.closeGracefully();
+}
+
+function handleWebpageClearCookies(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.clearCookies();
 	response.closeGracefully();
 }
 

@@ -744,6 +744,28 @@ func TestWebPage_AddCookie(t *testing.T) {
 	}
 }
 
+// Ensure process can clear all cookies on the page.
+func TestWebPage_ClearCookies(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Add a cookie.
+	if !page.AddCookie(&http.Cookie{Domain: ".example1.com", Name: "NAME1", Path: "/", Value: "VALUE1"}) {
+		t.Fatal("could not add cookie")
+	} else if cookies := page.Cookies(); len(cookies) != 1 {
+		t.Fatalf("unexpected cookie count: %d", len(cookies))
+	}
+
+	// Clear cookies and verify they are gone.
+	page.ClearCookies()
+	if cookies := page.Cookies(); len(cookies) != 0 {
+		t.Fatalf("unexpected cookie count: %d", len(cookies))
+	}
+}
+
 // Ensure web page can open a URL.
 func TestWebPage_Open(t *testing.T) {
 	// Serve web page.
