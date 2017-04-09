@@ -762,6 +762,7 @@ func (p *WebPage) InjectJS(filename string) error {
 	return nil
 }
 
+// Reload reloads the current web page.
 func (p *WebPage) Reload() {
 	p.ref.process.mustDoJSON("POST", "/webpage/Reload", map[string]interface{}{"ref": p.ref.id}, nil)
 }
@@ -892,7 +893,7 @@ type cookieJSON struct {
 	Domain   string `json:"domain"`
 	Expires  string `json:"expires"`
 	Expiry   int    `json:"expiry"`
-	HttpOnly bool   `json:"httponly"`
+	HTTPOnly bool   `json:"httponly"`
 	Name     string `json:"name"`
 	Path     string `json:"path"`
 	Secure   bool   `json:"secure"`
@@ -902,7 +903,7 @@ type cookieJSON struct {
 func encodeCookieJSON(v *http.Cookie) cookieJSON {
 	out := cookieJSON{
 		Domain:   v.Domain,
-		HttpOnly: v.HttpOnly,
+		HTTPOnly: v.HttpOnly,
 		Name:     v.Name,
 		Path:     v.Path,
 		Secure:   v.Secure,
@@ -919,7 +920,7 @@ func decodeCookieJSON(v cookieJSON) *http.Cookie {
 	out := &http.Cookie{
 		Domain:     v.Domain,
 		RawExpires: v.Expires,
-		HttpOnly:   v.HttpOnly,
+		HttpOnly:   v.HTTPOnly,
 		Name:       v.Name,
 		Path:       v.Path,
 		Secure:     v.Secure,
