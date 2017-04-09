@@ -1134,6 +1134,58 @@ func TestWebPage_Render(t *testing.T) {
 	}
 }
 
+// Ensure web page can receive mouse events.
+func TestWebPage_SendMouseEvent(t *testing.T) {
+	// Start process.
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	// Create & open page.
+	page := p.CreateWebPage()
+	defer page.Close()
+	page.SetContent(`<html><head><script>window.onclick = function(e) { window.testX = e.x; window.testY = e.y; window.testButton = e.button }</script></head><body></body></html>`)
+
+	// Send mouse event.
+	page.SendMouseEvent("click", 100, 200, "middle")
+
+	// Verify test variables.
+	if x := page.Evaluate(`function() { return window.testX }`); x != float64(100) {
+		t.Fatalf("unexpected x: %d", x)
+	} else if y := page.Evaluate(`function() { return window.testY }`); y != float64(200) {
+		t.Fatalf("unexpected y: %d", y)
+	} else if button := page.Evaluate(`function() { return window.testButton }`); button != float64(1) {
+		t.Fatalf("unexpected button: %d", button)
+	}
+}
+
+// Ensure web page can receive keyboard events.
+func TestWebPage_SendKeyboardEvent(t *testing.T) {
+	// Start process.
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	// Create & open page.
+	page := p.CreateWebPage()
+	defer page.Close()
+	page.SetContent(`<html><head><script>document.onkeydown = function(e) { window.testKey = e.keyCode; window.testAlt = e.altKey; window.testCtrl = e.ctrlKey; window.testMeta = e.metaKey; window.testShift = e.shiftKey;  }</script></head><body></body></html>`)
+
+	// Send event.
+	page.SendKeyboardEvent("keydown", "A", phantomjs.AltKey|phantomjs.CtrlKey|phantomjs.MetaKey|phantomjs.ShiftKey)
+
+	// Verify test variables.
+	if key := page.Evaluate(`function() { return window.testKey }`); key != float64(65) {
+		t.Fatalf("unexpected key: %s", key)
+	} else if altKey := page.Evaluate(`function() { return window.testAlt }`); altKey != true {
+		t.Fatalf("unexpected alt key: %v", altKey)
+	} else if ctrlKey := page.Evaluate(`function() { return window.testCtrl }`); ctrlKey != true {
+		t.Fatalf("unexpected ctrl key: %v", ctrlKey)
+	} else if metaKey := page.Evaluate(`function() { return window.testMeta }`); metaKey != true {
+		t.Fatalf("unexpected meta key: %v", metaKey)
+	} else if shiftKey := page.Evaluate(`function() { return window.testShift }`); shiftKey != true {
+		t.Fatalf("unexpected shift key: %v", shiftKey)
+	}
+}
+
 // Process is a test wrapper for phantomjs.Process.
 type Process struct {
 	*phantomjs.Process

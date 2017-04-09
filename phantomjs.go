@@ -2,7 +2,6 @@ package phantomjs
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +17,15 @@ import (
 var (
 	// ErrInjectionFailed is returned by InjectJS when injection fails.
 	ErrInjectionFailed = errors.New("injection failed")
+)
+
+// Keyboard modifiers.
+const (
+	ShiftKey = 0x02000000
+	CtrlKey  = 0x04000000
+	AltKey   = 0x08000000
+	MetaKey  = 0x10000000
+	Keypad   = 0x20000000
 )
 
 // Default settings.
@@ -774,6 +782,29 @@ func (p *WebPage) Render(filename, format string, quality int) {
 	p.ref.process.mustDoJSON("POST", "/webpage/Render", req, nil)
 }
 
+// SendMouseEvent sends a mouse event as if it came from the user.
+// It is not a synthetic event.
+//
+// The eventType can be "mouseup", "mousedown", "mousemove", "doubleclick",
+// or "click". The mouseX and mouseY specify the position of the mouse on the
+// screen. The button argument specifies the mouse button clicked (e.g. "left").
+func (p *WebPage) SendMouseEvent(eventType string, mouseX, mouseY int, button string) {
+	p.ref.process.mustDoJSON("POST", "/webpage/SendMouseEvent", map[string]interface{}{"ref": p.ref.id, "eventType": eventType, "mouseX": mouseX, "mouseY": mouseY, "button": button}, nil)
+}
+
+// SendKeyboardEvent sends a keyboard event as if it came from the user.
+// It is not a synthetic event.
+//
+// The eventType can be "keyup", "keypress", or "keydown".
+//
+// The key argument is a string or a key listed here:
+// https://github.com/ariya/phantomjs/commit/cab2635e66d74b7e665c44400b8b20a8f225153a
+//
+// Keyboard modifiers can be joined together using the bitwise OR operator.
+func (p *WebPage) SendKeyboardEvent(eventType string, key string, modifier int) {
+	p.ref.process.mustDoJSON("POST", "/webpage/SendKeyboardEvent", map[string]interface{}{"ref": p.ref.id, "eventType": eventType, "key": key, "modifier": modifier}, nil)
+}
+
 func (p *WebPage) SendEvent() {
 	panic("TODO")
 }
@@ -1099,6 +1130,8 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/Reload': return handleWebpageReload(request, response);
 			case '/webpage/RenderBase64': return handleWebpageRenderBase64(request, response);
 			case '/webpage/Render': return handleWebpageRender(request, response);
+			case '/webpage/SendMouseEvent': return handleWebpageSendMouseEvent(request, response);
+			case '/webpage/SendKeyboardEvent': return handleWebpageSendKeyboardEvent(request, response);
 			default: return handleNotFound(request, response);
 		}
 	} catch(e) {
@@ -1554,7 +1587,21 @@ function handleWebpageRenderBase64(request, response) {
 function handleWebpageRender(request, response) {
 	var msg = JSON.parse(request.post);
 	var page = ref(msg.ref);
-	var returnValue = page.render(msg.filename, {format: msg.format, quality: msg.quality});
+	page.render(msg.filename, {format: msg.format, quality: msg.quality});
+	response.closeGracefully();
+}
+
+function handleWebpageSendMouseEvent(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.sendEvent(msg.eventType, msg.mouseX, msg.mouseY, msg.button);
+	response.closeGracefully();
+}
+
+function handleWebpageSendKeyboardEvent(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.sendEvent(msg.eventType, msg.key, null, null, msg.modifier);
 	response.closeGracefully();
 }
 
