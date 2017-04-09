@@ -479,7 +479,7 @@ func TestWebPage_OwnsPages(t *testing.T) {
 	}
 }
 
-// Ensure process can retrive a list of window names opened by the page.
+// Ensure process can retrieve a list of window names opened by the page.
 func TestWebPage_PageWindowNames(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
@@ -497,6 +497,44 @@ func TestWebPage_PageWindowNames(t *testing.T) {
 	// Retrieve a list of window names.
 	if names := page.PageWindowNames(); !reflect.DeepEqual(names, []string{"win1"}) {
 		t.Fatalf("unexpected names: %+v", names)
+	}
+}
+
+// Ensure process can retrieve a list of owned web pages.
+func TestWebPage_Pages(t *testing.T) {
+	// Mock external HTTP server.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			w.Write([]byte(`<html><body><a id="link" target="win1" href="/win1.html">CLICK ME</a></body></html>`))
+		case "/win1.html":
+			w.Write([]byte(`<html><body>FOO</body></html>`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Open root page.
+	page.SetOwnsPages(true)
+	if err := page.Open(srv.URL); err != nil {
+		t.Fatal(err)
+	}
+
+	// Click the link.
+	page.EvaluateJavaScript(`function() { document.body.querySelector("#link").click() }`)
+
+	// Retrieve a list of window names.
+	if pages := page.Pages(); len(pages) != 1 {
+		t.Fatalf("unexpected count: %d", len(pages))
+	} else if u := pages[0].URL(); u != srv.URL+`/win1.html` {
+		t.Fatalf("unexpected url: %s", u)
 	}
 }
 

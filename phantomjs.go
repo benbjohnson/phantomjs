@@ -198,8 +198,10 @@ func (p *Process) mustDoJSON(method, path string, req, resp interface{}) {
 
 	// Decode response if reference passed in.
 	if resp != nil {
-		if err := json.NewDecoder(httpResponse.Body).Decode(resp); err != nil {
+		if buf, err := ioutil.ReadAll(httpResponse.Body); err != nil {
 			panic(err)
+		} else if err := json.Unmarshal(buf, resp); err != nil {
+			panic(fmt.Errorf("unmarshal error: err=%s, buffer=%s", err, buf))
 		}
 	}
 }
@@ -487,8 +489,19 @@ func (p *WebPage) PageWindowNames() []string {
 	return resp.Value
 }
 
-func (p *WebPage) Pages() string {
-	panic("TODO")
+// Pages returns a list of owned pages.
+func (p *WebPage) Pages() []*WebPage {
+	var resp struct {
+		Refs []refJSON `json:"refs"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/Pages", map[string]interface{}{"ref": p.ref.id}, &resp)
+
+	// Convert reference IDs to web pages.
+	a := make([]*WebPage, len(resp.Refs))
+	for i, ref := range resp.Refs {
+		a[i] = &WebPage{ref: newRef(p.ref.process, ref.ID)}
+	}
+	return a
 }
 
 func (p *WebPage) PaperSize() string {
@@ -511,8 +524,13 @@ func (p *WebPage) Title() string {
 	panic("TODO")
 }
 
-func (p *WebPage) Url() string {
-	panic("TODO")
+// URL returns the current URL of the web page.
+func (p *WebPage) URL() string {
+	var resp struct {
+		Value string `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/URL", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Value
 }
 
 func (p *WebPage) ViewportSize() string {
@@ -802,6 +820,9 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/OwnsPages': return handleWebpageOwnsPages(request, response);
 			case '/webpage/SetOwnsPages': return handleWebpageSetOwnsPages(request, response);
 			case '/webpage/PageWindowNames': return handleWebpagePageWindowNames(request, response);
+			case '/webpage/Pages': return handleWebpagePages(request, response);
+
+			case '/webpage/URL': return handleWebpageURL(request, response);
 			
 			case '/webpage/SwitchToFrameName': return handleWebpageSwitchToFrameName(request, response);
 			case '/webpage/SwitchToFramePosition': return handleWebpageSwitchToFramePosition(request, response);
@@ -1015,6 +1036,19 @@ function handleWebpagePageWindowNames(request, response) {
 	response.closeGracefully();
 }
 
+function handleWebpagePages(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	var refs = page.pages.map(function(p) { return createRef(p); })
+	response.write(JSON.stringify({refs: refs}));
+	response.closeGracefully();
+}
+
+
+function handleWebpageURL(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.url}));
+	response.closeGracefully();
+}
 
 
 function handleWebpageSwitchToFrameName(request, response) {
@@ -1033,9 +1067,18 @@ function handleWebpageSwitchToFramePosition(request, response) {
 
 function handleWebpageClose(request, response) {
 	var msg = JSON.parse(request.post);
+
+	// Close page.
 	var page = ref(msg.ref);
 	page.close();
 	delete(refs, msg.ref);
+
+	// Close and dereference owned pages.
+	for (var i = 0; i < page.pages.length; i++) {
+		page.pages[i].close();
+		deleteRef(page.pages[i]);
+	}
+
 	response.statusCode = 200;
 	response.closeGracefully();
 }
@@ -1066,9 +1109,30 @@ var refs = {};
 
 // Adds an object to the reference map and a ref object.
 function createRef(value) {
+	// Return existing reference, if one exists.
+	for (var key in refs) {
+		if (refs.hasOwnProperty(key)) {
+			if (refs[key] === value) {
+				return key
+			}
+		}
+	}
+
+	// Generate a new id for new references.
 	refID++;
-	refs[refID] = value;
+	refs[refID.toString()] = value;
 	return {id: refID.toString()};
+}
+
+// Removes a reference to a value, if any.
+function deleteRef(value) {
+	for (var key in refs) {
+		if (refs.hasOwnProperty(key)) {
+			if (refs[key] === value) {
+				delete(refs, key);
+			}
+		}
+	}
 }
 
 // Returns a reference object by ID.
