@@ -519,8 +519,13 @@ func (p *WebPage) SetPaperSize(size PaperSize) {
 	p.ref.process.mustDoJSON("POST", "/webpage/SetPaperSize", req, nil)
 }
 
+// PlainText returns the plain text representation of the page.
 func (p *WebPage) PlainText() string {
-	panic("TODO")
+	var resp struct {
+		Value string `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/PlainText", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Value
 }
 
 func (p *WebPage) ScrollPosition() string {
@@ -913,6 +918,7 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/Pages': return handleWebpagePages(request, response);
 			case '/webpage/PaperSize': return handleWebpagePaperSize(request, response);
 			case '/webpage/SetPaperSize': return handleWebpageSetPaperSize(request, response);
+			case '/webpage/PlainText': return handleWebpagePlainText(request, response);
 
 			case '/webpage/URL': return handleWebpageURL(request, response);
 			
@@ -1145,6 +1151,12 @@ function handleWebpageSetPaperSize(request, response) {
 	var msg = JSON.parse(request.post);
 	var page = ref(msg.ref);
 	page.paperSize = msg.size;
+	response.closeGracefully();
+}
+
+function handleWebpagePlainText(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.plainText}));
 	response.closeGracefully();
 }
 

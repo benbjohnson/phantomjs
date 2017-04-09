@@ -609,6 +609,21 @@ func TestWebPage_PaperSize(t *testing.T) {
 	})
 }
 
+// Ensure process can retrieve the plain text representation of a page.
+func TestWebPage_PlainText(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Set content & verify plain text.
+	page.SetContent(`<html><body>FOO</body></html>`)
+	if v := page.PlainText(); v != `FOO` {
+		t.Fatalf("unexpected plain text: %s", v)
+	}
+}
+
 // Ensure web page can open a URL.
 func TestWebPage_Open(t *testing.T) {
 	// Serve web page.
