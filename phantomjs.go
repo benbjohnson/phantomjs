@@ -158,7 +158,7 @@ func (p *Process) CreateWebPage() *WebPage {
 	var resp struct {
 		Ref refJSON `json:"ref"`
 	}
-	p.mustDoJSON("POST", "/webpage/create", nil, &resp)
+	p.mustDoJSON("POST", "/webpage/Create", nil, &resp)
 	return &WebPage{ref: newRef(p, resp.Ref.ID)}
 }
 
@@ -218,7 +218,7 @@ func (p *WebPage) Open(url string) error {
 	var resp struct {
 		Status string `json:"status"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/open", req, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/Open", req, &resp)
 
 	if resp.Status != "success" {
 		return errors.New("failed")
@@ -231,7 +231,7 @@ func (p *WebPage) CanGoBack() bool {
 	var resp struct {
 		Value bool `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/can_go_back", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/CanGoBack", map[string]interface{}{"ref": p.ref.id}, &resp)
 	return resp.Value
 }
 
@@ -240,7 +240,7 @@ func (p *WebPage) CanGoForward() bool {
 	var resp struct {
 		Value bool `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/can_go_forward", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/CanGoForward", map[string]interface{}{"ref": p.ref.id}, &resp)
 	return resp.Value
 }
 
@@ -250,7 +250,7 @@ func (p *WebPage) ClipRect() Rect {
 	var resp struct {
 		Value rectJSON `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/clip_rect", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/ClipRect", map[string]interface{}{"ref": p.ref.id}, &resp)
 	return Rect{
 		Top:    resp.Value.Top,
 		Left:   resp.Value.Left,
@@ -271,7 +271,7 @@ func (p *WebPage) SetClipRect(rect Rect) {
 			Height: rect.Height,
 		},
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/set_clip_rect", req, nil)
+	p.ref.process.mustDoJSON("POST", "/webpage/SetClipRect", req, nil)
 }
 
 // Content returns content of the webpage enclosed in an HTML/XML element.
@@ -279,13 +279,13 @@ func (p *WebPage) Content() string {
 	var resp struct {
 		Value string `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/content", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/Content", map[string]interface{}{"ref": p.ref.id}, &resp)
 	return resp.Value
 }
 
 // SetContent sets the content of the webpage.
 func (p *WebPage) SetContent(content string) {
-	p.ref.process.mustDoJSON("POST", "/webpage/set_content", map[string]interface{}{"ref": p.ref.id, "content": content}, nil)
+	p.ref.process.mustDoJSON("POST", "/webpage/SetContent", map[string]interface{}{"ref": p.ref.id, "content": content}, nil)
 }
 
 // Cookies returns a list of cookies visible to the current URL.
@@ -293,7 +293,7 @@ func (p *WebPage) Cookies() []*http.Cookie {
 	var resp struct {
 		Value []cookieJSON `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/cookies", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/Cookies", map[string]interface{}{"ref": p.ref.id}, &resp)
 
 	a := make([]*http.Cookie, len(resp.Value))
 	for i := range resp.Value {
@@ -309,7 +309,7 @@ func (p *WebPage) SetCookies(cookies []*http.Cookie) {
 		a[i] = encodeCookieJSON(cookies[i])
 	}
 	req := map[string]interface{}{"ref": p.ref.id, "cookies": a}
-	p.ref.process.mustDoJSON("POST", "/webpage/set_cookies", req, nil)
+	p.ref.process.mustDoJSON("POST", "/webpage/SetCookies", req, nil)
 }
 
 // CustomHeaders returns a list of additional headers sent with the web page.
@@ -317,7 +317,7 @@ func (p *WebPage) CustomHeaders() http.Header {
 	var resp struct {
 		Value map[string]string `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/custom_headers", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/CustomHeaders", map[string]interface{}{"ref": p.ref.id}, &resp)
 
 	// Convert to a header object.
 	hdr := make(http.Header)
@@ -337,7 +337,7 @@ func (p *WebPage) SetCustomHeaders(header http.Header) {
 		m[key] = header.Get(key)
 	}
 	req := map[string]interface{}{"ref": p.ref.id, "headers": m}
-	p.ref.process.mustDoJSON("POST", "/webpage/set_custom_headers", req, nil)
+	p.ref.process.mustDoJSON("POST", "/webpage/SetCustomHeaders", req, nil)
 }
 
 // FocusedFrameName returns the name of the currently focused frame.
@@ -345,7 +345,7 @@ func (p *WebPage) FocusedFrameName() string {
 	var resp struct {
 		Value string `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/focused_frame_name", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/FocusedFrameName", map[string]interface{}{"ref": p.ref.id}, &resp)
 	return resp.Value
 }
 
@@ -354,13 +354,13 @@ func (p *WebPage) FrameContent() string {
 	var resp struct {
 		Value string `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/frame_content", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/FrameContent", map[string]interface{}{"ref": p.ref.id}, &resp)
 	return resp.Value
 }
 
 // SetFrameContent sets the content of the current frame.
 func (p *WebPage) SetFrameContent(content string) {
-	p.ref.process.mustDoJSON("POST", "/webpage/set_frame_content", map[string]interface{}{"ref": p.ref.id, "content": content}, nil)
+	p.ref.process.mustDoJSON("POST", "/webpage/SetFrameContent", map[string]interface{}{"ref": p.ref.id, "content": content}, nil)
 }
 
 // FrameName returns the name of the current frame.
@@ -368,7 +368,7 @@ func (p *WebPage) FrameName() string {
 	var resp struct {
 		Value string `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/frame_name", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/FrameName", map[string]interface{}{"ref": p.ref.id}, &resp)
 	return resp.Value
 }
 
@@ -377,7 +377,7 @@ func (p *WebPage) FramePlainText() string {
 	var resp struct {
 		Value string `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/frame_plain_text", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/FramePlainText", map[string]interface{}{"ref": p.ref.id}, &resp)
 	return resp.Value
 }
 
@@ -386,7 +386,7 @@ func (p *WebPage) FrameTitle() string {
 	var resp struct {
 		Value string `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/frame_title", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/FrameTitle", map[string]interface{}{"ref": p.ref.id}, &resp)
 	return resp.Value
 }
 
@@ -395,7 +395,7 @@ func (p *WebPage) FrameURL() string {
 	var resp struct {
 		Value string `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/frame_url", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/FrameURL", map[string]interface{}{"ref": p.ref.id}, &resp)
 	return resp.Value
 }
 
@@ -404,7 +404,7 @@ func (p *WebPage) FrameCount() int {
 	var resp struct {
 		Value int `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/frame_count", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/FrameCount", map[string]interface{}{"ref": p.ref.id}, &resp)
 	return resp.Value
 }
 
@@ -413,7 +413,7 @@ func (p *WebPage) FrameNames() []string {
 	var resp struct {
 		Value []string `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/frame_names", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/FrameNames", map[string]interface{}{"ref": p.ref.id}, &resp)
 	return resp.Value
 }
 
@@ -423,13 +423,13 @@ func (p *WebPage) LibraryPath() string {
 	var resp struct {
 		Value string `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/library_path", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/LibraryPath", map[string]interface{}{"ref": p.ref.id}, &resp)
 	return resp.Value
 }
 
 // SetLibraryPath sets the library path used by InjectJS().
 func (p *WebPage) SetLibraryPath(path string) {
-	p.ref.process.mustDoJSON("POST", "/webpage/set_library_path", map[string]interface{}{"ref": p.ref.id, "path": path}, nil)
+	p.ref.process.mustDoJSON("POST", "/webpage/SetLibraryPath", map[string]interface{}{"ref": p.ref.id, "path": path}, nil)
 }
 
 // NavigationLocked returns true if the navigation away from the page is disabled.
@@ -437,13 +437,13 @@ func (p *WebPage) NavigationLocked() bool {
 	var resp struct {
 		Value bool `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/navigation_locked", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/NavigationLocked", map[string]interface{}{"ref": p.ref.id}, &resp)
 	return resp.Value
 }
 
 // SetNavigationLocked sets whether navigation away from the page should be disabled.
 func (p *WebPage) SetNavigationLocked(value bool) {
-	p.ref.process.mustDoJSON("POST", "/webpage/set_navigation_locked", map[string]interface{}{"ref": p.ref.id, "value": value}, nil)
+	p.ref.process.mustDoJSON("POST", "/webpage/SetNavigationLocked", map[string]interface{}{"ref": p.ref.id, "value": value}, nil)
 }
 
 // OfflineStoragePath returns the path used by offline storage.
@@ -451,7 +451,7 @@ func (p *WebPage) OfflineStoragePath() string {
 	var resp struct {
 		Value string `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/offline_storage_path", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/OfflineStoragePath", map[string]interface{}{"ref": p.ref.id}, &resp)
 	return resp.Value
 }
 
@@ -460,7 +460,7 @@ func (p *WebPage) OfflineStorageQuota() int {
 	var resp struct {
 		Value int `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/offline_storage_quota", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/OfflineStorageQuota", map[string]interface{}{"ref": p.ref.id}, &resp)
 	return resp.Value
 }
 
@@ -469,13 +469,13 @@ func (p *WebPage) OwnsPages() bool {
 	var resp struct {
 		Value bool `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/owns_pages", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/OwnsPages", map[string]interface{}{"ref": p.ref.id}, &resp)
 	return resp.Value
 }
 
 // SetOwnsPages sets whether this page owns pages opened in other windows.
 func (p *WebPage) SetOwnsPages(v bool) {
-	p.ref.process.mustDoJSON("POST", "/webpage/set_owns_pages", map[string]interface{}{"ref": p.ref.id, "value": v}, nil)
+	p.ref.process.mustDoJSON("POST", "/webpage/SetOwnsPages", map[string]interface{}{"ref": p.ref.id, "value": v}, nil)
 }
 
 // PageWindowNames returns an list of owned window names.
@@ -483,7 +483,7 @@ func (p *WebPage) PageWindowNames() []string {
 	var resp struct {
 		Value []string `json:"value"`
 	}
-	p.ref.process.mustDoJSON("POST", "/webpage/page_window_names", map[string]interface{}{"ref": p.ref.id}, &resp)
+	p.ref.process.mustDoJSON("POST", "/webpage/PageWindowNames", map[string]interface{}{"ref": p.ref.id}, &resp)
 	return resp.Value
 }
 
@@ -545,7 +545,7 @@ func (p *WebPage) ClearCookies() {
 
 // Close releases the web page and its resources.
 func (p *WebPage) Close() {
-	p.ref.process.mustDoJSON("POST", "/webpage/close", map[string]interface{}{"ref": p.ref.id}, nil)
+	p.ref.process.mustDoJSON("POST", "/webpage/Close", map[string]interface{}{"ref": p.ref.id}, nil)
 }
 
 func (p *WebPage) CurrentFrameName() {
@@ -644,12 +644,12 @@ func (p *WebPage) SwitchToFocusedFrame() {
 
 // SwitchToFrameName changes focus to the named frame.
 func (p *WebPage) SwitchToFrameName(name string) {
-	p.ref.process.mustDoJSON("POST", "/webpage/switch_to_frame_name", map[string]interface{}{"ref": p.ref.id, "name": name}, nil)
+	p.ref.process.mustDoJSON("POST", "/webpage/SwitchToFrameName", map[string]interface{}{"ref": p.ref.id, "name": name}, nil)
 }
 
 // SwitchToFramePosition changes focus to a frame at the given position.
 func (p *WebPage) SwitchToFramePosition(pos int) {
-	p.ref.process.mustDoJSON("POST", "/webpage/switch_to_frame_position", map[string]interface{}{"ref": p.ref.id, "position": pos}, nil)
+	p.ref.process.mustDoJSON("POST", "/webpage/SwitchToFramePosition", map[string]interface{}{"ref": p.ref.id, "position": pos}, nil)
 }
 
 func (p *WebPage) SwitchToMainFrame() {
@@ -773,41 +773,40 @@ server.listen(system.env["PORT"], function(request, response) {
 	try {
 		switch (request.url) {
 			case '/ping': return handlePing(request, response);
-			case '/webpage/can_go_back': return handleWebpageCanGoBack(request, response);
-			case '/webpage/can_go_forward': return handleWebpageCanGoForward(request, response);
-			case '/webpage/clip_rect': return handleWebpageClipRect(request, response);
-			case '/webpage/set_clip_rect': return handleWebpageSetClipRect(request, response);
-			case '/webpage/cookies': return handleWebpageCookies(request, response);
-			case '/webpage/set_cookies': return handleWebpageSetCookies(request, response);
-			case '/webpage/custom_headers': return handleWebpageCustomHeaders(request, response);
-			case '/webpage/set_custom_headers': return handleWebpageSetCustomHeaders(request, response);
-			case '/webpage/create': return handleWebpageCreate(request, response);
-			case '/webpage/content': return handleWebpageContent(request, response);
-			case '/webpage/set_content': return handleWebpageSetContent(request, response);
-			case '/webpage/focused_frame_name': return handleWebpageFocusedFrameName(request, response);
-			case '/webpage/frame_content': return handleWebpageFrameContent(request, response);
-			case '/webpage/set_frame_content': return handleWebpageSetFrameContent(request, response);
-			case '/webpage/frame_name': return handleWebpageFrameName(request, response);
-			case '/webpage/frame_plain_text': return handleWebpageFramePlainText(request, response);
-			case '/webpage/frame_title': return handleWebpageFrameTitle(request, response);
-			case '/webpage/frame_url': return handleWebpageFrameURL(request, response);
-			case '/webpage/frame_count': return handleWebpageFrameCount(request, response);
-			case '/webpage/frame_names': return handleWebpageFrameNames(request, response);
-			case '/webpage/library_path': return handleWebpageLibraryPath(request, response);
-			case '/webpage/set_library_path': return handleWebpageSetLibraryPath(request, response);
-			case '/webpage/navigation_locked': return handleWebpageNavigationLocked(request, response);
-			case '/webpage/set_navigation_locked': return handleWebpageSetNavigationLocked(request, response);
-			case '/webpage/offline_storage_path': return handleWebpageOfflineStoragePath(request, response);
-			case '/webpage/offline_storage_quota': return handleWebpageOfflineStorageQuota(request, response);
-			case '/webpage/set_offline_storage_quota': return handleWebpageSetOfflineStorageQuota(request, response);
-			case '/webpage/owns_pages': return handleWebpageOwnsPages(request, response);
-			case '/webpage/set_owns_pages': return handleWebpageSetOwnsPages(request, response);
-			case '/webpage/page_window_names': return handleWebpagePageWindowNames(request, response);
+			case '/webpage/CanGoBack': return handleWebpageCanGoBack(request, response);
+			case '/webpage/CanGoForward': return handleWebpageCanGoForward(request, response);
+			case '/webpage/ClipRect': return handleWebpageClipRect(request, response);
+			case '/webpage/SetClipRect': return handleWebpageSetClipRect(request, response);
+			case '/webpage/Cookies': return handleWebpageCookies(request, response);
+			case '/webpage/SetCookies': return handleWebpageSetCookies(request, response);
+			case '/webpage/CustomHeaders': return handleWebpageCustomHeaders(request, response);
+			case '/webpage/SetCustomHeaders': return handleWebpageSetCustomHeaders(request, response);
+			case '/webpage/Create': return handleWebpageCreate(request, response);
+			case '/webpage/Content': return handleWebpageContent(request, response);
+			case '/webpage/SetContent': return handleWebpageSetContent(request, response);
+			case '/webpage/FocusedFrameName': return handleWebpageFocusedFrameName(request, response);
+			case '/webpage/FrameContent': return handleWebpageFrameContent(request, response);
+			case '/webpage/SetFrameContent': return handleWebpageSetFrameContent(request, response);
+			case '/webpage/FrameName': return handleWebpageFrameName(request, response);
+			case '/webpage/FramePlainText': return handleWebpageFramePlainText(request, response);
+			case '/webpage/FrameTitle': return handleWebpageFrameTitle(request, response);
+			case '/webpage/FrameURL': return handleWebpageFrameURL(request, response);
+			case '/webpage/FrameCount': return handleWebpageFrameCount(request, response);
+			case '/webpage/FrameNames': return handleWebpageFrameNames(request, response);
+			case '/webpage/LibraryPath': return handleWebpageLibraryPath(request, response);
+			case '/webpage/SetLibraryPath': return handleWebpageSetLibraryPath(request, response);
+			case '/webpage/NavigationLocked': return handleWebpageNavigationLocked(request, response);
+			case '/webpage/SetNavigationLocked': return handleWebpageSetNavigationLocked(request, response);
+			case '/webpage/OfflineStoragePath': return handleWebpageOfflineStoragePath(request, response);
+			case '/webpage/OfflineStorageQuota': return handleWebpageOfflineStorageQuota(request, response);
+			case '/webpage/OwnsPages': return handleWebpageOwnsPages(request, response);
+			case '/webpage/SetOwnsPages': return handleWebpageSetOwnsPages(request, response);
+			case '/webpage/PageWindowNames': return handleWebpagePageWindowNames(request, response);
 			
-			case '/webpage/switch_to_frame_name': return handleWebpageSwitchToFrameName(request, response);
-			case '/webpage/switch_to_frame_position': return handleWebpageSwitchToFramePosition(request, response);
-			case '/webpage/open': return handleWebpageOpen(request, response);
-			case '/webpage/close': return handleWebpageClose(request, response);
+			case '/webpage/SwitchToFrameName': return handleWebpageSwitchToFrameName(request, response);
+			case '/webpage/SwitchToFramePosition': return handleWebpageSwitchToFramePosition(request, response);
+			case '/webpage/Open': return handleWebpageOpen(request, response);
+			case '/webpage/Close': return handleWebpageClose(request, response);
 			case '/webpage/EvaluateJavaScript': return handleWebpageEvaluateJavaScript(request, response);
 			default: return handleNotFound(request, response);
 		}
