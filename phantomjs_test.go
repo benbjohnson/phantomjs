@@ -535,6 +535,8 @@ func TestWebPage_Pages(t *testing.T) {
 		t.Fatalf("unexpected count: %d", len(pages))
 	} else if u := pages[0].URL(); u != srv.URL+`/win1.html` {
 		t.Fatalf("unexpected url: %s", u)
+	} else if name := pages[0].WindowName(); name != `win1` {
+		t.Fatalf("unexpected window name: %s", name)
 	}
 }
 

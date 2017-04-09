@@ -617,8 +617,13 @@ func (p *WebPage) SetViewportSize(width, height int) {
 	p.ref.process.mustDoJSON("POST", "/webpage/SetViewportSize", map[string]interface{}{"ref": p.ref.id, "width": width, "height": height}, nil)
 }
 
+// WindowName returns the window name of the web page.
 func (p *WebPage) WindowName() string {
-	panic("TODO")
+	var resp struct {
+		Value string `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/WindowName", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Value
 }
 
 func (p *WebPage) ZoomFactor() string {
@@ -1022,7 +1027,8 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/URL': return handleWebpageURL(request, response);
 			case '/webpage/ViewportSize': return handleWebpageViewportSize(request, response);
 			case '/webpage/SetViewportSize': return handleWebpageSetViewportSize(request, response);
-			
+			case '/webpage/WindowName': return handleWebpageWindowName(request, response);
+
 			case '/webpage/SwitchToFrameName': return handleWebpageSwitchToFrameName(request, response);
 			case '/webpage/SwitchToFramePosition': return handleWebpageSwitchToFramePosition(request, response);
 			case '/webpage/Open': return handleWebpageOpen(request, response);
@@ -1314,6 +1320,11 @@ function handleWebpageSetViewportSize(request, response) {
 	response.closeGracefully();
 }
 
+function handleWebpageWindowName(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.windowName}));
+	response.closeGracefully();
+}
 
 
 function handleWebpageSwitchToFrameName(request, response) {
