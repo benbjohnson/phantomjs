@@ -640,6 +640,32 @@ func TestWebPage_ScrollPosition(t *testing.T) {
 	}
 }
 
+// Ensure process can set and retrieve page settings.
+func TestWebPage_Settings(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Set and verify settings.
+	settings := phantomjs.WebPageSettings{
+		JavascriptEnabled:             true,
+		LoadImages:                    true,
+		LocalToRemoteURLAccessEnabled: true,
+		UserAgent:                     "Mozilla/5.0",
+		Username:                      "susy",
+		Password:                      "pass",
+		XSSAuditingEnabled:            true,
+		WebSecurityEnabled:            true,
+		ResourceTimeout:               10 * time.Second,
+	}
+	page.SetSettings(settings)
+	if other := page.Settings(); !reflect.DeepEqual(other, settings) {
+		t.Fatalf("unexpected settings: %#v", other)
+	}
+}
+
 // Ensure web page can open a URL.
 func TestWebPage_Open(t *testing.T) {
 	// Serve web page.

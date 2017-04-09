@@ -543,8 +543,45 @@ func (p *WebPage) SetScrollPosition(pos Position) {
 	p.ref.process.mustDoJSON("POST", "/webpage/SetScrollPosition", map[string]interface{}{"ref": p.ref.id, "top": pos.Top, "left": pos.Left}, nil)
 }
 
-func (p *WebPage) Settings() string {
-	panic("TODO")
+// Settings returns the settings used on the web page.
+func (p *WebPage) Settings() WebPageSettings {
+	var resp struct {
+		Settings webPageSettingsJSON `json:"settings"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/Settings", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return WebPageSettings{
+		JavascriptEnabled:             resp.Settings.JavascriptEnabled,
+		LoadImages:                    resp.Settings.LoadImages,
+		LocalToRemoteURLAccessEnabled: resp.Settings.LocalToRemoteURLAccessEnabled,
+		UserAgent:                     resp.Settings.UserAgent,
+		Username:                      resp.Settings.Username,
+		Password:                      resp.Settings.Password,
+		XSSAuditingEnabled:            resp.Settings.XSSAuditingEnabled,
+		WebSecurityEnabled:            resp.Settings.WebSecurityEnabled,
+		ResourceTimeout:               time.Duration(resp.Settings.ResourceTimeout) * time.Millisecond,
+	}
+}
+
+// SetSettings sets various settings on the web page.
+//
+// The settings apply only during the initial call to the page.open function.
+// Subsequent modification of the settings object will not have any impact.
+func (p *WebPage) SetSettings(settings WebPageSettings) {
+	req := map[string]interface{}{
+		"ref": p.ref.id,
+		"settings": webPageSettingsJSON{
+			JavascriptEnabled:             settings.JavascriptEnabled,
+			LoadImages:                    settings.LoadImages,
+			LocalToRemoteURLAccessEnabled: settings.LocalToRemoteURLAccessEnabled,
+			UserAgent:                     settings.UserAgent,
+			Username:                      settings.Username,
+			Password:                      settings.Password,
+			XSSAuditingEnabled:            settings.XSSAuditingEnabled,
+			WebSecurityEnabled:            settings.WebSecurityEnabled,
+			ResourceTimeout:               int(settings.ResourceTimeout / time.Millisecond),
+		},
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/SetSettings", req, nil)
 }
 
 func (p *WebPage) Title() string {
@@ -887,6 +924,31 @@ type Position struct {
 	Left int
 }
 
+// WebPageSettings represents various settings on a web page.
+type WebPageSettings struct {
+	JavascriptEnabled             bool
+	LoadImages                    bool
+	LocalToRemoteURLAccessEnabled bool
+	UserAgent                     string
+	Username                      string
+	Password                      string
+	XSSAuditingEnabled            bool
+	WebSecurityEnabled            bool
+	ResourceTimeout               time.Duration
+}
+
+type webPageSettingsJSON struct {
+	JavascriptEnabled             bool   `json:"javascriptEnabled"`
+	LoadImages                    bool   `json:"loadImages"`
+	LocalToRemoteURLAccessEnabled bool   `json:"localToRemoteUrlAccessEnabled"`
+	UserAgent                     string `json:"userAgent"`
+	Username                      string `json:"username"`
+	Password                      string `json:"password"`
+	XSSAuditingEnabled            bool   `json:"XSSAuditingEnabled"`
+	WebSecurityEnabled            bool   `json:"webSecurityEnabled"`
+	ResourceTimeout               int    `json:"resourceTimeout"`
+}
+
 // shim is the included javascript used to communicate with PhantomJS.
 const shim = `
 var system = require("system")
@@ -938,6 +1000,8 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/PlainText': return handleWebpagePlainText(request, response);
 			case '/webpage/ScrollPosition': return handleWebpageScrollPosition(request, response);
 			case '/webpage/SetScrollPosition': return handleWebpageSetScrollPosition(request, response);
+			case '/webpage/Settings': return handleWebpageSettings(request, response);
+			case '/webpage/SetSettings': return handleWebpageSetSettings(request, response);
 
 			case '/webpage/URL': return handleWebpageURL(request, response);
 			
@@ -1190,6 +1254,19 @@ function handleWebpageSetScrollPosition(request, response) {
 	var msg = JSON.parse(request.post);
 	var page = ref(msg.ref);
 	page.scrollPosition = {top: msg.top, left: msg.left};
+	response.closeGracefully();
+}
+
+function handleWebpageSettings(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({settings: page.settings}));
+	response.closeGracefully();
+}
+
+function handleWebpageSetSettings(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.settings = msg.settings;
 	response.closeGracefully();
 }
 
