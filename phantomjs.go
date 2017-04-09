@@ -805,12 +805,9 @@ func (p *WebPage) SendKeyboardEvent(eventType string, key string, modifier int) 
 	p.ref.process.mustDoJSON("POST", "/webpage/SendKeyboardEvent", map[string]interface{}{"ref": p.ref.id, "eventType": eventType, "key": key, "modifier": modifier}, nil)
 }
 
-func (p *WebPage) SendEvent() {
-	panic("TODO")
-}
-
-func (p *WebPage) SetContentAndURL() {
-	panic("TODO")
+// SetContentAndURL sets the content and URL of the page.
+func (p *WebPage) SetContentAndURL(content, url string) {
+	p.ref.process.mustDoJSON("POST", "/webpage/SetContentAndURL", map[string]interface{}{"ref": p.ref.id, "content": content, "url": url}, nil)
 }
 
 func (p *WebPage) Stop() {
@@ -1132,6 +1129,7 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/Render': return handleWebpageRender(request, response);
 			case '/webpage/SendMouseEvent': return handleWebpageSendMouseEvent(request, response);
 			case '/webpage/SendKeyboardEvent': return handleWebpageSendKeyboardEvent(request, response);
+			case '/webpage/SetContentAndURL': return handleWebpageSetContentAndURL(request, response);
 			default: return handleNotFound(request, response);
 		}
 	} catch(e) {
@@ -1602,6 +1600,13 @@ function handleWebpageSendKeyboardEvent(request, response) {
 	var msg = JSON.parse(request.post);
 	var page = ref(msg.ref);
 	page.sendEvent(msg.eventType, msg.key, null, null, msg.modifier);
+	response.closeGracefully();
+}
+
+function handleWebpageSetContentAndURL(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.setContent(msg.content, msg.url);
 	response.closeGracefully();
 }
 

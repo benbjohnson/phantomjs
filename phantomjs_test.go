@@ -1186,6 +1186,25 @@ func TestWebPage_SendKeyboardEvent(t *testing.T) {
 	}
 }
 
+// Ensure web page can set content and URL at the same time.
+func TestWebPage_SetContentAndURL(t *testing.T) {
+	// Start process.
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	// Create & open page.
+	page := p.CreateWebPage()
+	defer page.Close()
+	page.SetContentAndURL(`<html><body>FOO</body></html>`, "http://google.com")
+
+	// Verify content & URL.
+	if content := page.Content(); content != `<html><head></head><body>FOO</body></html>` {
+		t.Fatalf("unexpected content: %s", content)
+	} else if u := page.URL(); u != `http://google.com/` {
+		t.Fatalf("unexpected URL: %s", u)
+	}
+}
+
 // Process is a test wrapper for phantomjs.Process.
 type Process struct {
 	*phantomjs.Process
