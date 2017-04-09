@@ -672,8 +672,10 @@ func (p *WebPage) DeleteCookie(name string) bool {
 	return resp.ReturnValue
 }
 
-func (p *WebPage) EvaluateAsync() {
-	panic("TODO")
+// EvaluateAsync executes a JavaScript function and returns immediately.
+// Execution is delayed by delay. No value is returned.
+func (p *WebPage) EvaluateAsync(script string, delay time.Duration) {
+	p.ref.process.mustDoJSON("POST", "/webpage/EvaluateAsync", map[string]interface{}{"ref": p.ref.id, "script": script, "delay": int(delay / time.Millisecond)}, nil)
 }
 
 // EvaluateJavaScript executes a JavaScript function.
@@ -1051,6 +1053,7 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/SwitchToFramePosition': return handleWebpageSwitchToFramePosition(request, response);
 			case '/webpage/Open': return handleWebpageOpen(request, response);
 			case '/webpage/Close': return handleWebpageClose(request, response);
+			case '/webpage/EvaluateAsync': return handleWebpageEvaluateAsync(request, response);
 			case '/webpage/EvaluateJavaScript': return handleWebpageEvaluateJavaScript(request, response);
 			default: return handleNotFound(request, response);
 		}
@@ -1410,6 +1413,13 @@ function handleWebpageClose(request, response) {
 	}
 
 	response.statusCode = 200;
+	response.closeGracefully();
+}
+
+function handleWebpageEvaluateAsync(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.evaluateAsync(msg.script, msg.delay);
 	response.closeGracefully();
 }
 

@@ -793,6 +793,32 @@ func TestWebPage_DeleteCookie(t *testing.T) {
 	}
 }
 
+// Ensure process can execute JavaScript asynchronously.
+// This function relies on time so it is inherently flakey.
+func TestWebPage_EvaluateAsync(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Execute after one second.
+	page.EvaluateAsync(`function() { window.testValue = "OK" }`, 1*time.Second)
+
+	// Value should not be set immediately.
+	if value := page.EvaluateJavaScript(`function() { return window.testValue }`); value != nil {
+		t.Fatalf("unexpected value: %#v", value)
+	}
+
+	// Wait a bit.
+	time.Sleep(2 * time.Second)
+
+	// Value should hopefully be set now.
+	if value := page.EvaluateJavaScript(`function() { return window.testValue }`); value != "OK" {
+		t.Fatalf("unexpected value: %#v", value)
+	}
+}
+
 // Ensure web page can open a URL.
 func TestWebPage_Open(t *testing.T) {
 	// Serve web page.
