@@ -14,6 +14,11 @@ import (
 	"time"
 )
 
+var (
+	// ErrInjectionFailed is returned by InjectJS when injection fails.
+	ErrInjectionFailed = errors.New("injection failed")
+)
+
 // Default settings.
 const (
 	DefaultPort    = 20202
@@ -727,12 +732,25 @@ func (p *WebPage) Go(index int) {
 	p.ref.process.mustDoJSON("POST", "/webpage/Go", map[string]interface{}{"ref": p.ref.id, "index": index}, nil)
 }
 
-func (p *WebPage) IncludeJS() {
-	panic("TODO")
+// IncludeJS includes an external script from url.
+// Returns after the script has been loaded.
+func (p *WebPage) IncludeJS(url string) {
+	p.ref.process.mustDoJSON("POST", "/webpage/IncludeJS", map[string]interface{}{"ref": p.ref.id, "url": url}, nil)
 }
 
-func (p *WebPage) InjectJS() {
-	panic("TODO")
+// InjectJS injects an external script from the local filesystem.
+//
+// The script will be loaded from the Process.Path() directory. If it cannot be
+// found then it is loaded from the library path.
+func (p *WebPage) InjectJS(filename string) error {
+	var resp struct {
+		ReturnValue bool `json:"returnValue"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/InjectJS", map[string]interface{}{"ref": p.ref.id, "filename": filename}, &resp)
+	if !resp.ReturnValue {
+		return ErrInjectionFailed
+	}
+	return nil
 }
 
 func (p *WebPage) OpenURL() {
@@ -1079,6 +1097,8 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/GoBack': return handleWebpageGoBack(request, response);
 			case '/webpage/GoForward': return handleWebpageGoForward(request, response);
 			case '/webpage/Go': return handleWebpageGo(request, response);
+			case '/webpage/IncludeJS': return handleWebpageIncludeJS(request, response);
+			case '/webpage/InjectJS': return handleWebpageInjectJS(request, response);
 			default: return handleNotFound(request, response);
 		}
 	} catch(e) {
@@ -1497,6 +1517,22 @@ function handleWebpageGo(request, response) {
 	var msg = JSON.parse(request.post);
 	var page = ref(msg.ref);
 	page.go(msg.index);
+	response.closeGracefully();
+}
+
+function handleWebpageIncludeJS(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.includeJs(msg.url, function() {
+		response.closeGracefully();
+	});
+}
+
+function handleWebpageInjectJS(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	var returnValue = page.injectJs(msg.filename);
+	response.write(JSON.stringify({returnValue: returnValue}));
 	response.closeGracefully();
 }
 

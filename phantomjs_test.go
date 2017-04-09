@@ -1,8 +1,10 @@
 package phantomjs_test
 
 import (
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
@@ -950,6 +952,65 @@ func TestWebPage_Go(t *testing.T) {
 	page.Go(1)
 	if u := page.URL(); u != srv.URL+"/page1.html" {
 		t.Fatalf("unexpected page: %s", u)
+	}
+}
+
+// Ensure process include external scripts.
+func TestWebPage_IncludeJS(t *testing.T) {
+	// Mock external HTTP server.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			w.Write([]byte(`<html><body>FOO</body></html>`))
+		case "/script.js":
+			w.Write([]byte(`window.testValue = 'INCLUDED'`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Open root page.
+	if err := page.Open(srv.URL); err != nil {
+		t.Fatal(err)
+	}
+
+	// Include external script.
+	page.IncludeJS(srv.URL + "/script.js")
+
+	// Verify that script ran.
+	if v := page.Evaluate(`function() { return window.testValue }`); v != "INCLUDED" {
+		t.Fatalf("unexpected test value: %#v", v)
+	}
+}
+
+// Ensure process include local scripts.
+func TestWebPage_InjectJS(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Write local script.
+	if err := ioutil.WriteFile(filepath.Join(p.Path(), "script.js"), []byte(`window.testValue = 'INCLUDED'`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Include local script.
+	if err := page.InjectJS("script.js"); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that script ran.
+	if v := page.Evaluate(`function() { return window.testValue }`); v != "INCLUDED" {
+		t.Fatalf("unexpected test value: %#v", v)
 	}
 }
 
