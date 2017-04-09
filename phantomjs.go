@@ -2,6 +2,7 @@ package phantomjs
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -757,16 +758,20 @@ func (p *WebPage) Reload() {
 	p.ref.process.mustDoJSON("POST", "/webpage/Reload", map[string]interface{}{"ref": p.ref.id}, nil)
 }
 
-func (p *WebPage) RenderBase64() {
-	panic("TODO")
+// RenderBase64 renders the web page to a base64 encoded string.
+func (p *WebPage) RenderBase64(format string) string {
+	var resp struct {
+		ReturnValue string `json:"returnValue"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/RenderBase64", map[string]interface{}{"ref": p.ref.id, "format": format}, &resp)
+	return resp.ReturnValue
 }
 
-func (p *WebPage) RenderBuffer() {
-	panic("TODO")
-}
-
-func (p *WebPage) Render() {
-	panic("TODO")
+// Render renders the web page to a file with the given format and quality settings.
+// This supports the "PDF", "PNG", "JPEG", "BMP", "PPM", and "GIF" formats.
+func (p *WebPage) Render(filename, format string, quality int) {
+	req := map[string]interface{}{"ref": p.ref.id, "filename": filename, "format": format, "quality": quality}
+	p.ref.process.mustDoJSON("POST", "/webpage/Render", req, nil)
 }
 
 func (p *WebPage) SendEvent() {
@@ -1092,6 +1097,8 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/IncludeJS': return handleWebpageIncludeJS(request, response);
 			case '/webpage/InjectJS': return handleWebpageInjectJS(request, response);
 			case '/webpage/Reload': return handleWebpageReload(request, response);
+			case '/webpage/RenderBase64': return handleWebpageRenderBase64(request, response);
+			case '/webpage/Render': return handleWebpageRender(request, response);
 			default: return handleNotFound(request, response);
 		}
 	} catch(e) {
@@ -1533,6 +1540,21 @@ function handleWebpageReload(request, response) {
 	var msg = JSON.parse(request.post);
 	var page = ref(msg.ref);
 	page.reload();
+	response.closeGracefully();
+}
+
+function handleWebpageRenderBase64(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	var returnValue = page.renderBase64(msg.format);
+	response.write(JSON.stringify({returnValue: returnValue}));
+	response.closeGracefully();
+}
+
+function handleWebpageRender(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	var returnValue = page.render(msg.filename, {format: msg.format, quality: msg.quality});
 	response.closeGracefully();
 }
 

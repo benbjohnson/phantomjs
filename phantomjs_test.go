@@ -1,7 +1,10 @@
 package phantomjs_test
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
+	"image/png"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -1067,6 +1070,67 @@ func TestWebPage_Reload(t *testing.T) {
 	page.Reload()
 	if content := page.Content(); content != `<html><head></head><body>2</body></html>` {
 		t.Fatalf("unexpected content: %q", content)
+	}
+}
+
+// Ensure web page can render to a base64 string.
+func TestWebPage_RenderBase64(t *testing.T) {
+	// Start process.
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	// Create & open page.
+	page := p.CreateWebPage()
+	defer page.Close()
+	page.SetContent(`<html><head></head><body>TEST</body></html>`)
+	page.SetViewportSize(100, 200)
+
+	// Render page.
+	data := page.RenderBase64("png")
+
+	// Decode data.
+	buf, err := base64.StdEncoding.DecodeString(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Parse image and verify dimensions.
+	img, err := png.Decode(bytes.NewReader(buf))
+	if err != nil {
+		t.Fatal(err)
+	} else if bounds := img.Bounds(); bounds.Max.X != 100 || bounds.Max.Y != 200 {
+		t.Fatalf("unexpected image dimesions: %dx%d", bounds.Max.X, bounds.Max.Y)
+	}
+}
+
+// Ensure web page can render to a file.
+func TestWebPage_Render(t *testing.T) {
+	// Start process.
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	// Create & open page.
+	page := p.CreateWebPage()
+	defer page.Close()
+	page.SetContent(`<html><head></head><body>TEST</body></html>`)
+	page.SetViewportSize(100, 200)
+
+	// Render page.
+	filename := filepath.Join(p.Path(), "test.png")
+	page.Render(filename, "png", 100)
+
+	// Read file.
+	buf, err := ioutil.ReadFile(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Parse image and verify dimensions.
+	img, err := png.Decode(bytes.NewReader(buf))
+	if err != nil {
+		t.Fatal(err)
+	} else if bounds := img.Bounds(); bounds.Max.X != 100 || bounds.Max.Y != 200 {
+		t.Fatalf("unexpected image dimesions: %dx%d", bounds.Max.X, bounds.Max.Y)
 	}
 }
 
