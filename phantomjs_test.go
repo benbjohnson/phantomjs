@@ -624,6 +624,22 @@ func TestWebPage_PlainText(t *testing.T) {
 	}
 }
 
+// Ensure process can set and retrieve the scroll position of the page.
+func TestWebPage_ScrollPosition(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Set and verify position.
+	pos := phantomjs.Position{Top: 10, Left: 20}
+	page.SetScrollPosition(pos)
+	if other := page.ScrollPosition(); !reflect.DeepEqual(other, pos) {
+		t.Fatalf("unexpected position: %#v", pos)
+	}
+}
+
 // Ensure web page can open a URL.
 func TestWebPage_Open(t *testing.T) {
 	// Serve web page.

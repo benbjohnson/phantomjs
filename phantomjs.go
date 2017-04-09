@@ -528,8 +528,19 @@ func (p *WebPage) PlainText() string {
 	return resp.Value
 }
 
-func (p *WebPage) ScrollPosition() string {
-	panic("TODO")
+// ScrollPosition returns the current scroll position of the page.
+func (p *WebPage) ScrollPosition() Position {
+	var resp struct {
+		Top  int `json:"top"`
+		Left int `json:"left"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/ScrollPosition", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return Position{Top: resp.Top, Left: resp.Left}
+}
+
+// SetScrollPosition sets the current scroll position of the page.
+func (p *WebPage) SetScrollPosition(pos Position) {
+	p.ref.process.mustDoJSON("POST", "/webpage/SetScrollPosition", map[string]interface{}{"ref": p.ref.id, "top": pos.Top, "left": pos.Left}, nil)
 }
 
 func (p *WebPage) Settings() string {
@@ -870,6 +881,12 @@ func decodePaperSizeJSON(v paperSizeJSON) PaperSize {
 	return out
 }
 
+// Position represents a coordinate on the page, in pixels.
+type Position struct {
+	Top  int
+	Left int
+}
+
 // shim is the included javascript used to communicate with PhantomJS.
 const shim = `
 var system = require("system")
@@ -919,6 +936,8 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/PaperSize': return handleWebpagePaperSize(request, response);
 			case '/webpage/SetPaperSize': return handleWebpageSetPaperSize(request, response);
 			case '/webpage/PlainText': return handleWebpagePlainText(request, response);
+			case '/webpage/ScrollPosition': return handleWebpageScrollPosition(request, response);
+			case '/webpage/SetScrollPosition': return handleWebpageSetScrollPosition(request, response);
 
 			case '/webpage/URL': return handleWebpageURL(request, response);
 			
@@ -1157,6 +1176,20 @@ function handleWebpageSetPaperSize(request, response) {
 function handleWebpagePlainText(request, response) {
 	var page = ref(JSON.parse(request.post).ref);
 	response.write(JSON.stringify({value: page.plainText}));
+	response.closeGracefully();
+}
+
+function handleWebpageScrollPosition(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	var pos = page.scrollPosition;
+	response.write(JSON.stringify({top: pos.top, left: pos.left}));
+	response.closeGracefully();
+}
+
+function handleWebpageSetScrollPosition(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.scrollPosition = {top: msg.top, left: msg.left};
 	response.closeGracefully();
 }
 
