@@ -819,6 +819,21 @@ func TestWebPage_EvaluateAsync(t *testing.T) {
 	}
 }
 
+// Ensure process can execute JavaScript in the context of a web page.
+func TestWebPage_Evaluate(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+	page.SetContent(`<html><head><title>FOO</title></head><body>BAR</body></html>`)
+
+	// Retrieve title.
+	if value := page.EvaluateJavaScript(`function() { return document.title }`); value != "FOO" {
+		t.Fatalf("unexpected value: %#v", value)
+	}
+}
+
 // Ensure web page can open a URL.
 func TestWebPage_Open(t *testing.T) {
 	// Serve web page.

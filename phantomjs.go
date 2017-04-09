@@ -688,8 +688,14 @@ func (p *WebPage) EvaluateJavaScript(script string) interface{} {
 	return resp.ReturnValue
 }
 
-func (p *WebPage) Evaluate() {
-	panic("TODO")
+// Evaluate executes a JavaScript function in the context of the web page.
+// Returns the value returned by the function.
+func (p *WebPage) Evaluate(script string) interface{} {
+	var resp struct {
+		ReturnValue interface{} `json:"returnValue"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/Evaluate", map[string]interface{}{"ref": p.ref.id, "script": script}, &resp)
+	return resp.ReturnValue
 }
 
 func (p *WebPage) GetPage() {
@@ -1055,6 +1061,7 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/Close': return handleWebpageClose(request, response);
 			case '/webpage/EvaluateAsync': return handleWebpageEvaluateAsync(request, response);
 			case '/webpage/EvaluateJavaScript': return handleWebpageEvaluateJavaScript(request, response);
+			case '/webpage/Evaluate': return handleWebpageEvaluate(request, response);
 			default: return handleNotFound(request, response);
 		}
 	} catch(e) {
@@ -1427,6 +1434,15 @@ function handleWebpageEvaluateJavaScript(request, response) {
 	var msg = JSON.parse(request.post);
 	var page = ref(msg.ref);
 	var returnValue = page.evaluateJavaScript(msg.script);
+	response.statusCode = 200;
+	response.write(JSON.stringify({returnValue: returnValue}));
+	response.closeGracefully();
+}
+
+function handleWebpageEvaluate(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	var returnValue = page.evaluate(msg.script);
 	response.statusCode = 200;
 	response.write(JSON.stringify({returnValue: returnValue}));
 	response.closeGracefully();
