@@ -677,7 +677,22 @@ func TestWebPage_Title(t *testing.T) {
 	// Set & verify title.
 	page.SetContent(`<html><head><title>FOO</title></head><body>BAR</body></html>`)
 	if v := page.Title(); v != `FOO` {
-		t.Fatalf("unexpected title: %s", v)
+		t.Fatalf("unexpected plain text: %s", v)
+	}
+}
+
+// Ensure process can set and retrieve the viewport size.
+func TestWebPage_ViewportSize(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Set and verify size.
+	page.SetViewportSize(100, 200)
+	if w, h := page.ViewportSize(); w != 100 || h != 200 {
+		t.Fatalf("unexpected size: w=%d, h=%d", w, h)
 	}
 }
 

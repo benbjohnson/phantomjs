@@ -602,8 +602,19 @@ func (p *WebPage) URL() string {
 	return resp.Value
 }
 
-func (p *WebPage) ViewportSize() string {
-	panic("TODO")
+// ViewportSize returns the size of the viewport on the browser.
+func (p *WebPage) ViewportSize() (width, height int) {
+	var resp struct {
+		Width  int `json:"width"`
+		Height int `json:"height"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/ViewportSize", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Width, resp.Height
+}
+
+// SetViewportSize sets the size of the viewport.
+func (p *WebPage) SetViewportSize(width, height int) {
+	p.ref.process.mustDoJSON("POST", "/webpage/SetViewportSize", map[string]interface{}{"ref": p.ref.id, "width": width, "height": height}, nil)
 }
 
 func (p *WebPage) WindowName() string {
@@ -677,15 +688,15 @@ func (p *WebPage) Go() {
 	panic("TODO")
 }
 
-func (p *WebPage) IncludeJs() {
+func (p *WebPage) IncludeJS() {
 	panic("TODO")
 }
 
-func (p *WebPage) InjectJs() {
+func (p *WebPage) InjectJS() {
 	panic("TODO")
 }
 
-func (p *WebPage) OpenUrl() {
+func (p *WebPage) OpenURL() {
 	panic("TODO")
 }
 
@@ -1009,6 +1020,8 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/SetSettings': return handleWebpageSetSettings(request, response);
 			case '/webpage/Title': return handleWebpageTitle(request, response);
 			case '/webpage/URL': return handleWebpageURL(request, response);
+			case '/webpage/ViewportSize': return handleWebpageViewportSize(request, response);
+			case '/webpage/SetViewportSize': return handleWebpageSetViewportSize(request, response);
 			
 			case '/webpage/SwitchToFrameName': return handleWebpageSwitchToFrameName(request, response);
 			case '/webpage/SwitchToFramePosition': return handleWebpageSwitchToFramePosition(request, response);
@@ -1286,6 +1299,21 @@ function handleWebpageURL(request, response) {
 	response.write(JSON.stringify({value: page.url}));
 	response.closeGracefully();
 }
+
+function handleWebpageViewportSize(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	var viewport = page.viewportSize;
+	response.write(JSON.stringify({width: viewport.width, height: viewport.height}));
+	response.closeGracefully();
+}
+
+function handleWebpageSetViewportSize(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.viewportSize = {width: msg.width, height: msg.height};
+	response.closeGracefully();
+}
+
 
 
 function handleWebpageSwitchToFrameName(request, response) {
