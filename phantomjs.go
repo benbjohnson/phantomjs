@@ -810,34 +810,34 @@ func (p *WebPage) SetContentAndURL(content, url string) {
 	p.ref.process.mustDoJSON("POST", "/webpage/SetContentAndURL", map[string]interface{}{"ref": p.ref.id, "content": content, "url": url}, nil)
 }
 
+// Stop stops the web page.
 func (p *WebPage) Stop() {
-	panic("TODO")
+	p.ref.process.mustDoJSON("POST", "/webpage/Stop", map[string]interface{}{"ref": p.ref.id}, nil)
 }
 
-func (p *WebPage) SwitchToChildFrame() {
-	panic("TODO")
-}
-
+// SwitchToFocusedFrame changes the current frame to the frame that is in focus.
 func (p *WebPage) SwitchToFocusedFrame() {
-	panic("TODO")
+	p.ref.process.mustDoJSON("POST", "/webpage/SwitchToFocusedFrame", map[string]interface{}{"ref": p.ref.id}, nil)
 }
 
-// SwitchToFrameName changes focus to the named frame.
+// SwitchToFrameName changes the current frame to a frame with a given name.
 func (p *WebPage) SwitchToFrameName(name string) {
 	p.ref.process.mustDoJSON("POST", "/webpage/SwitchToFrameName", map[string]interface{}{"ref": p.ref.id, "name": name}, nil)
 }
 
-// SwitchToFramePosition changes focus to a frame at the given position.
+// SwitchToFramePosition changes the current frame to the frame at the given position.
 func (p *WebPage) SwitchToFramePosition(pos int) {
 	p.ref.process.mustDoJSON("POST", "/webpage/SwitchToFramePosition", map[string]interface{}{"ref": p.ref.id, "position": pos}, nil)
 }
 
+// SwitchToMainFrame switches the current frame to the main frame.
 func (p *WebPage) SwitchToMainFrame() {
-	panic("TODO")
+	p.ref.process.mustDoJSON("POST", "/webpage/SwitchToMainFrame", map[string]interface{}{"ref": p.ref.id}, nil)
 }
 
+// SwitchToParentFrame switches the current frame to the parent of the current frame.
 func (p *WebPage) SwitchToParentFrame() {
-	panic("TODO")
+	p.ref.process.mustDoJSON("POST", "/webpage/SwitchToParentFrame", map[string]interface{}{"ref": p.ref.id}, nil)
 }
 
 func (p *WebPage) UploadFile() {
@@ -1111,8 +1111,6 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/AddCookie': return handleWebpageAddCookie(request, response);
 			case '/webpage/ClearCookies': return handleWebpageClearCookies(request, response);
 			case '/webpage/DeleteCookie': return handleWebpageDeleteCookie(request, response);
-			case '/webpage/SwitchToFrameName': return handleWebpageSwitchToFrameName(request, response);
-			case '/webpage/SwitchToFramePosition': return handleWebpageSwitchToFramePosition(request, response);
 			case '/webpage/Open': return handleWebpageOpen(request, response);
 			case '/webpage/Close': return handleWebpageClose(request, response);
 			case '/webpage/EvaluateAsync': return handleWebpageEvaluateAsync(request, response);
@@ -1130,6 +1128,12 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/SendMouseEvent': return handleWebpageSendMouseEvent(request, response);
 			case '/webpage/SendKeyboardEvent': return handleWebpageSendKeyboardEvent(request, response);
 			case '/webpage/SetContentAndURL': return handleWebpageSetContentAndURL(request, response);
+			case '/webpage/Stop': return handleWebpageStop(request, response);
+			case '/webpage/SwitchToFocusedFrame': return handleWebpageSwitchToFocusedFrame(request, response);
+			case '/webpage/SwitchToFrameName': return handleWebpageSwitchToFrameName(request, response);
+			case '/webpage/SwitchToFramePosition': return handleWebpageSwitchToFramePosition(request, response);
+			case '/webpage/SwitchToMainFrame': return handleWebpageSwitchToMainFrame(request, response);
+			case '/webpage/SwitchToParentFrame': return handleWebpageSwitchToParentFrame(request, response);
 			default: return handleNotFound(request, response);
 		}
 	} catch(e) {
@@ -1459,20 +1463,6 @@ function handleWebpageDeleteCookie(request, response) {
 	response.closeGracefully();
 }
 
-function handleWebpageSwitchToFrameName(request, response) {
-	var msg = JSON.parse(request.post);
-	var page = ref(msg.ref);
-	page.switchToFrame(msg.name);
-	response.closeGracefully();
-}
-
-function handleWebpageSwitchToFramePosition(request, response) {
-	var msg = JSON.parse(request.post);
-	var page = ref(msg.ref);
-	page.switchToFrame(msg.position);
-	response.closeGracefully();
-}
-
 function handleWebpageClose(request, response) {
 	var msg = JSON.parse(request.post);
 
@@ -1609,6 +1599,49 @@ function handleWebpageSetContentAndURL(request, response) {
 	page.setContent(msg.content, msg.url);
 	response.closeGracefully();
 }
+
+function handleWebpageStop(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.stop();
+	response.closeGracefully();
+}
+
+function handleWebpageSwitchToFocusedFrame(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.switchToFocusedFrame();
+	response.closeGracefully();
+}
+
+function handleWebpageSwitchToFrameName(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.switchToFrame(msg.name);
+	response.closeGracefully();
+}
+
+function handleWebpageSwitchToFramePosition(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.switchToFrame(msg.position);
+	response.closeGracefully();
+}
+
+function handleWebpageSwitchToMainFrame(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.switchToMainFrame();
+	response.closeGracefully();
+}
+
+function handleWebpageSwitchToParentFrame(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.switchToParentFrame();
+	response.closeGracefully();
+}
+
 
 
 function handleNotFound(request, response) {

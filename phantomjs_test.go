@@ -1205,6 +1205,60 @@ func TestWebPage_SetContentAndURL(t *testing.T) {
 	}
 }
 
+// Ensure web page can call stop().
+func TestWebPage_Stop(t *testing.T) {
+	// Start process.
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	// Create & open page.
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Call stop and ensure it doesn't blow up.
+	page.Stop()
+}
+
+// Ensure web page can switch to the focused frame.
+func TestWebPage_SwitchToFocusedFrame(t *testing.T) {
+	// Mock external HTTP server.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			w.Write([]byte(`<html><frameset rows="*,*"><frame name="FRAME1" src="/frame1.html"/><frame name="FRAME2" src="/frame2.html"/></frameset></html>`))
+		case "/frame1.html":
+			w.Write([]byte(`<html><body></body></html>`))
+		case "/frame2.html":
+			w.Write([]byte(`<html><body><input autofocus/></body></html>`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	// Start process.
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	// Create & open page.
+	page := p.CreateWebPage()
+	defer page.Close()
+	if err := page.Open(srv.URL); err != nil {
+		t.Fatal(err)
+	}
+
+	// Check initial current frame.
+	if other := page.FrameName(); other != `` {
+		t.Fatalf("unexpected value: %#v", other)
+	}
+
+	// Switch to focused frame and verify.
+	page.SwitchToFocusedFrame()
+	if other := page.FrameName(); other != `FRAME2` {
+		t.Fatalf("unexpected value: %#v", other)
+	}
+}
+
 // Process is a test wrapper for phantomjs.Process.
 type Process struct {
 	*phantomjs.Process
