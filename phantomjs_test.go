@@ -698,6 +698,21 @@ func TestWebPage_ViewportSize(t *testing.T) {
 	}
 }
 
+// Ensure process can set and retrieve the zoom factor on the page.
+func TestWebPage_ZoomFactor(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Set factor & verify it changed.
+	page.SetZoomFactor(2.5)
+	if v := page.ZoomFactor(); v != 2.5 {
+		t.Fatalf("unexpected zoom factor: %f", v)
+	}
+}
+
 // Ensure web page can open a URL.
 func TestWebPage_Open(t *testing.T) {
 	// Serve web page.

@@ -626,8 +626,18 @@ func (p *WebPage) WindowName() string {
 	return resp.Value
 }
 
-func (p *WebPage) ZoomFactor() string {
-	panic("TODO")
+// ZoomFactor returns zoom factor when rendering the page.
+func (p *WebPage) ZoomFactor() float64 {
+	var resp struct {
+		Value float64 `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/ZoomFactor", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Value
+}
+
+// SetZoomFactor sets the zoom factor when rendering the page.
+func (p *WebPage) SetZoomFactor(factor float64) {
+	p.ref.process.mustDoJSON("POST", "/webpage/SetZoomFactor", map[string]interface{}{"ref": p.ref.id, "value": factor}, nil)
 }
 
 func (p *WebPage) AddCookie() {
@@ -1028,6 +1038,8 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/ViewportSize': return handleWebpageViewportSize(request, response);
 			case '/webpage/SetViewportSize': return handleWebpageSetViewportSize(request, response);
 			case '/webpage/WindowName': return handleWebpageWindowName(request, response);
+			case '/webpage/ZoomFactor': return handleWebpageZoomFactor(request, response);
+			case '/webpage/SetZoomFactor': return handleWebpageSetZoomFactor(request, response);
 
 			case '/webpage/SwitchToFrameName': return handleWebpageSwitchToFrameName(request, response);
 			case '/webpage/SwitchToFramePosition': return handleWebpageSwitchToFramePosition(request, response);
@@ -1323,6 +1335,19 @@ function handleWebpageSetViewportSize(request, response) {
 function handleWebpageWindowName(request, response) {
 	var page = ref(JSON.parse(request.post).ref);
 	response.write(JSON.stringify({value: page.windowName}));
+	response.closeGracefully();
+}
+
+function handleWebpageZoomFactor(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.zoomFactor}));
+	response.closeGracefully();
+}
+
+function handleWebpageSetZoomFactor(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.zoomFactor = msg.value;
 	response.closeGracefully();
 }
 
