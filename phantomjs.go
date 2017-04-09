@@ -504,8 +504,19 @@ func (p *WebPage) Pages() []*WebPage {
 	return a
 }
 
-func (p *WebPage) PaperSize() string {
-	panic("TODO")
+// PaperSize returns the size of the web page when rendered as a PDF.
+func (p *WebPage) PaperSize() PaperSize {
+	var resp struct {
+		Value paperSizeJSON `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/PaperSize", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return decodePaperSizeJSON(resp.Value)
+}
+
+// SetPaperSize sets the size of the web page when rendered as a PDF.
+func (p *WebPage) SetPaperSize(size PaperSize) {
+	req := map[string]interface{}{"ref": p.ref.id, "size": encodePaperSizeJSON(size)}
+	p.ref.process.mustDoJSON("POST", "/webpage/SetPaperSize", req, nil)
 }
 
 func (p *WebPage) PlainText() string {
@@ -775,6 +786,85 @@ func decodeCookieJSON(v cookieJSON) *http.Cookie {
 	return out
 }
 
+// PaperSize represents the size of a webpage when rendered as a PDF.
+//
+// Units can be specified in "mm", "cm", "in", or "px".
+// If no unit is specified then "px" is used.
+type PaperSize struct {
+	// Dimensions of the paper.
+	// This can also be specified via Format.
+	Width  string
+	Height string
+
+	// Supported formats: "A3", "A4", "A5", "Legal", "Letter", "Tabloid".
+	Format string
+
+	// Margins around the paper.
+	Margin *PaperSizeMargin
+
+	// Supported orientations: "portrait", "landscape".
+	Orientation string
+}
+
+// PaperSizeMargin represents the margins around the paper.
+type PaperSizeMargin struct {
+	Top    string
+	Bottom string
+	Left   string
+	Right  string
+}
+
+type paperSizeJSON struct {
+	Width       string               `json:"width,omitempty"`
+	Height      string               `json:"height,omitempty"`
+	Format      string               `json:"format,omitempty"`
+	Margin      *paperSizeMarginJSON `json:"margin,omitempty"`
+	Orientation string               `json:"orientation,omitempty"`
+}
+
+type paperSizeMarginJSON struct {
+	Top    string `json:"top,omitempty"`
+	Bottom string `json:"bottom,omitempty"`
+	Left   string `json:"left,omitempty"`
+	Right  string `json:"right,omitempty"`
+}
+
+func encodePaperSizeJSON(v PaperSize) paperSizeJSON {
+	out := paperSizeJSON{
+		Width:       v.Width,
+		Height:      v.Height,
+		Format:      v.Format,
+		Orientation: v.Orientation,
+	}
+	if v.Margin != nil {
+		out.Margin = &paperSizeMarginJSON{
+			Top:    v.Margin.Top,
+			Bottom: v.Margin.Bottom,
+			Left:   v.Margin.Left,
+			Right:  v.Margin.Right,
+		}
+	}
+	return out
+}
+
+func decodePaperSizeJSON(v paperSizeJSON) PaperSize {
+	out := PaperSize{
+		Width:       v.Width,
+		Height:      v.Height,
+		Format:      v.Format,
+		Orientation: v.Orientation,
+	}
+	if v.Margin != nil {
+		out.Margin = &PaperSizeMargin{
+			Top:    v.Margin.Top,
+			Bottom: v.Margin.Bottom,
+			Left:   v.Margin.Left,
+			Right:  v.Margin.Right,
+		}
+	}
+	return out
+}
+
 // shim is the included javascript used to communicate with PhantomJS.
 const shim = `
 var system = require("system")
@@ -821,6 +911,8 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/SetOwnsPages': return handleWebpageSetOwnsPages(request, response);
 			case '/webpage/PageWindowNames': return handleWebpagePageWindowNames(request, response);
 			case '/webpage/Pages': return handleWebpagePages(request, response);
+			case '/webpage/PaperSize': return handleWebpagePaperSize(request, response);
+			case '/webpage/SetPaperSize': return handleWebpageSetPaperSize(request, response);
 
 			case '/webpage/URL': return handleWebpageURL(request, response);
 			
@@ -1040,6 +1132,19 @@ function handleWebpagePages(request, response) {
 	var page = ref(JSON.parse(request.post).ref);
 	var refs = page.pages.map(function(p) { return createRef(p); })
 	response.write(JSON.stringify({refs: refs}));
+	response.closeGracefully();
+}
+
+function handleWebpagePaperSize(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.paperSize}));
+	response.closeGracefully();
+}
+
+function handleWebpageSetPaperSize(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.paperSize = msg.size;
 	response.closeGracefully();
 }
 

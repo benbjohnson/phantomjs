@@ -538,6 +538,77 @@ func TestWebPage_Pages(t *testing.T) {
 	}
 }
 
+// Ensure process can set and retrieve the sizing options used for printing.
+func TestWebPage_PaperSize(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	// Ensure initial size is the zero value.
+	t.Run("Initial", func(t *testing.T) {
+		page := p.CreateWebPage()
+		defer page.Close()
+
+		if sz := page.PaperSize(); !reflect.DeepEqual(sz, phantomjs.PaperSize{}) {
+			t.Fatalf("unexpected size: %#v", sz)
+		}
+	})
+
+	// Ensure width/height can be set.
+	t.Run("WidthHeight", func(t *testing.T) {
+		page := p.CreateWebPage()
+		defer page.Close()
+
+		sz := phantomjs.PaperSize{Width: "5in", Height: "10in"}
+		page.SetPaperSize(sz)
+		if other := page.PaperSize(); !reflect.DeepEqual(other, sz) {
+			t.Fatalf("unexpected size: %#v", other)
+		}
+	})
+
+	// Ensure format can be set.
+	t.Run("Format", func(t *testing.T) {
+		page := p.CreateWebPage()
+		defer page.Close()
+
+		sz := phantomjs.PaperSize{Format: "A4"}
+		page.SetPaperSize(sz)
+		if other := page.PaperSize(); !reflect.DeepEqual(other, sz) {
+			t.Fatalf("unexpected size: %#v", other)
+		}
+	})
+
+	// Ensure orientation can be set.
+	t.Run("Orientation", func(t *testing.T) {
+		page := p.CreateWebPage()
+		defer page.Close()
+
+		sz := phantomjs.PaperSize{Orientation: "landscape"}
+		page.SetPaperSize(sz)
+		if other := page.PaperSize(); !reflect.DeepEqual(other, sz) {
+			t.Fatalf("unexpected size: %#v", other)
+		}
+	})
+
+	// Ensure margins can be set.
+	t.Run("Margin", func(t *testing.T) {
+		page := p.CreateWebPage()
+		defer page.Close()
+
+		sz := phantomjs.PaperSize{
+			Margin: &phantomjs.PaperSizeMargin{
+				Top:    "1in",
+				Bottom: "2in",
+				Left:   "3in",
+				Right:  "4in",
+			},
+		}
+		page.SetPaperSize(sz)
+		if other := page.PaperSize(); !reflect.DeepEqual(other, sz) {
+			t.Fatalf("unexpected size: %#v", other)
+		}
+	})
+}
+
 // Ensure web page can open a URL.
 func TestWebPage_Open(t *testing.T) {
 	// Serve web page.
