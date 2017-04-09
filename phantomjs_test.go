@@ -21,9 +21,11 @@ func TestWebPage_CanGoForward(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
-	if page.CanGoForward() {
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
+	if v, err := page.CanGoForward(); err != nil {
+		t.Fatal(err)
+	} else if v {
 		t.Fatal("expected false")
 	}
 }
@@ -33,9 +35,11 @@ func TestWebPage_CanGoBack(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
-	if page.CanGoBack() {
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
+	if v, err := page.CanGoBack(); err != nil {
+		t.Fatal(err)
+	} else if v {
 		t.Fatal("expected false")
 	}
 }
@@ -45,18 +49,24 @@ func TestWebPage_ClipRect(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Clipping rectangle should be empty initially.
-	if v := page.ClipRect(); v != (phantomjs.Rect{}) {
+	if v, err := page.ClipRect(); err != nil {
+		t.Fatal(err)
+	} else if v != (phantomjs.Rect{}) {
 		t.Fatalf("expected empty rect: %#v", v)
 	}
 
 	// Set a rectangle.
 	rect := phantomjs.Rect{Top: 1, Left: 2, Width: 3, Height: 4}
-	page.SetClipRect(rect)
-	if v := page.ClipRect(); !reflect.DeepEqual(v, rect) {
+	if err := page.SetClipRect(rect); err != nil {
+		t.Fatal(err)
+	}
+	if v, err := page.ClipRect(); err != nil {
+		t.Fatal(err)
+	} else if !reflect.DeepEqual(v, rect) {
 		t.Fatalf("unexpected value: %#v", v)
 	}
 }
@@ -66,8 +76,8 @@ func TestWebPage_Cookies(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Test data.
 	cookies := []*http.Cookie{
@@ -91,13 +101,17 @@ func TestWebPage_Cookies(t *testing.T) {
 	}
 
 	// Set the cookies.
-	page.SetCookies(cookies)
+	if err := page.SetCookies(cookies); err != nil {
+		t.Fatal(err)
+	}
 
 	// Cookie with expiration should have string version set on return.
 	cookies[1].RawExpires = "Thu, 02 Jan 2020 03:04:05 GMT"
 
 	// Retrieve and verify the cookies.
-	if other := page.Cookies(); len(other) != 2 {
+	if other, err := page.Cookies(); err != nil {
+		t.Fatal(err)
+	} else if len(other) != 2 {
 		t.Fatalf("unexpected cookie count: %d", len(other))
 	} else if !reflect.DeepEqual(other[0], cookies[0]) {
 		t.Fatalf("unexpected cookie(0): %#v", other[0])
@@ -111,8 +125,8 @@ func TestWebPage_CustomHeaders(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Test data.
 	hdr := make(http.Header)
@@ -120,10 +134,14 @@ func TestWebPage_CustomHeaders(t *testing.T) {
 	hdr.Set("BAZ", "BAT")
 
 	// Set the headers.
-	page.SetCustomHeaders(hdr)
+	if err := page.SetCustomHeaders(hdr); err != nil {
+		t.Fatal(err)
+	}
 
 	// Retrieve and verify the headers.
-	if other := page.CustomHeaders(); !reflect.DeepEqual(other, hdr) {
+	if other, err := page.CustomHeaders(); err != nil {
+		t.Fatal(err)
+	} else if !reflect.DeepEqual(other, hdr) {
 		t.Fatalf("unexpected value: %#v", other)
 	}
 }
@@ -150,14 +168,16 @@ func TestWebPage_FocusedFrameName(t *testing.T) {
 	defer p.MustClose()
 
 	// Create & open page.
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 	if err := page.Open(srv.URL); err != nil {
 		t.Fatal(err)
 	}
 
 	// Retrieve the focused frame.
-	if other := page.FocusedFrameName(); other != "FRAME2" {
+	if other, err := page.FocusedFrameName(); err != nil {
+		t.Fatal(err)
+	} else if other != "FRAME2" {
 		t.Fatalf("unexpected value: %#v", other)
 	}
 }
@@ -184,17 +204,23 @@ func TestWebPage_FrameContent(t *testing.T) {
 	defer p.MustClose()
 
 	// Create & open page.
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 	if err := page.Open(srv.URL); err != nil {
 		t.Fatal(err)
 	}
 
 	// Switch to frame and update content.
-	page.SwitchToFrameName("FRAME2")
-	page.SetFrameContent(`<html><body>NEW CONTENT</body></html>`)
+	if err := page.SwitchToFrameName("FRAME2"); err != nil {
+		t.Fatal(err)
+	}
+	if err := page.SetFrameContent(`<html><body>NEW CONTENT</body></html>`); err != nil {
+		t.Fatal(err)
+	}
 
-	if other := page.FrameContent(); other != `<html><head></head><body>NEW CONTENT</body></html>` {
+	if other, err := page.FrameContent(); err != nil {
+		t.Fatal(err)
+	} else if other != `<html><head></head><body>NEW CONTENT</body></html>` {
 		t.Fatalf("unexpected value: %#v", other)
 	}
 }
@@ -221,15 +247,19 @@ func TestWebPage_FrameName(t *testing.T) {
 	defer p.MustClose()
 
 	// Create & open page.
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 	if err := page.Open(srv.URL); err != nil {
 		t.Fatal(err)
 	}
 
 	// Switch to frame and retrieve name.
-	page.SwitchToFrameName("FRAME2")
-	if other := page.FrameName(); other != `FRAME2` {
+	if err := page.SwitchToFrameName("FRAME2"); err != nil {
+		t.Fatal(err)
+	}
+	if other, err := page.FrameName(); err != nil {
+		t.Fatal(err)
+	} else if other != `FRAME2` {
 		t.Fatalf("unexpected value: %#v", other)
 	}
 }
@@ -256,15 +286,19 @@ func TestWebPage_FramePlainText(t *testing.T) {
 	defer p.MustClose()
 
 	// Create & open page.
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 	if err := page.Open(srv.URL); err != nil {
 		t.Fatal(err)
 	}
 
 	// Switch to frame and update content.
-	page.SwitchToFrameName("FRAME2")
-	if other := page.FramePlainText(); other != `BAR` {
+	if err := page.SwitchToFrameName("FRAME2"); err != nil {
+		t.Fatal(err)
+	}
+	if other, err := page.FramePlainText(); err != nil {
+		t.Fatal(err)
+	} else if other != `BAR` {
 		t.Fatalf("unexpected value: %#v", other)
 	}
 }
@@ -291,15 +325,19 @@ func TestWebPage_FrameTitle(t *testing.T) {
 	defer p.MustClose()
 
 	// Create & open page.
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 	if err := page.Open(srv.URL); err != nil {
 		t.Fatal(err)
 	}
 
 	// Switch to frame and verify title.
-	page.SwitchToFrameName("FRAME2")
-	if other := page.FrameTitle(); other != `TEST TITLE` {
+	if err := page.SwitchToFrameName("FRAME2"); err != nil {
+		t.Fatal(err)
+	}
+	if other, err := page.FrameTitle(); err != nil {
+		t.Fatal(err)
+	} else if other != `TEST TITLE` {
 		t.Fatalf("unexpected value: %#v", other)
 	}
 }
@@ -326,15 +364,19 @@ func TestWebPage_FrameURL(t *testing.T) {
 	defer p.MustClose()
 
 	// Create & open page.
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 	if err := page.Open(srv.URL); err != nil {
 		t.Fatal(err)
 	}
 
 	// Switch to frame and verify title.
-	page.SwitchToFramePosition(1)
-	if other := page.FrameURL(); other != srv.URL+`/frame2.html` {
+	if err := page.SwitchToFramePosition(1); err != nil {
+		t.Fatal(err)
+	}
+	if other, err := page.FrameURL(); err != nil {
+		t.Fatal(err)
+	} else if other != srv.URL+`/frame2.html` {
 		t.Fatalf("unexpected value: %#v", other)
 	}
 }
@@ -361,14 +403,16 @@ func TestWebPage_FrameCount(t *testing.T) {
 	defer p.MustClose()
 
 	// Create & open page.
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 	if err := page.Open(srv.URL); err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify frame count.
-	if n := page.FrameCount(); n != 2 {
+	if n, err := page.FrameCount(); err != nil {
+		t.Fatal(err)
+	} else if n != 2 {
 		t.Fatalf("unexpected value: %#v", n)
 	}
 }
@@ -395,14 +439,16 @@ func TestWebPage_FrameNames(t *testing.T) {
 	defer p.MustClose()
 
 	// Create & open page.
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 	if err := page.Open(srv.URL); err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify frame count.
-	if other := page.FrameNames(); !reflect.DeepEqual(other, []string{"FRAME1", "FRAME2"}) {
+	if other, err := page.FrameNames(); err != nil {
+		t.Fatal(err)
+	} else if !reflect.DeepEqual(other, []string{"FRAME1", "FRAME2"}) {
 		t.Fatalf("unexpected value: %#v", other)
 	}
 }
@@ -412,17 +458,23 @@ func TestWebPage_LibraryPath(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Verify initial path is equal to process path.
-	if v := page.LibraryPath(); v != p.Path() {
+	if v, err := page.LibraryPath(); err != nil {
+		t.Fatal(err)
+	} else if v != p.Path() {
 		t.Fatalf("unexpected path: %s", v)
 	}
 
 	// Set the library path & verify it changed.
-	page.SetLibraryPath("/tmp")
-	if v := page.LibraryPath(); v != `/tmp` {
+	if err := page.SetLibraryPath("/tmp"); err != nil {
+		t.Fatal(err)
+	}
+	if v, err := page.LibraryPath(); err != nil {
+		t.Fatal(err)
+	} else if v != `/tmp` {
 		t.Fatalf("unexpected path: %s", v)
 	}
 }
@@ -432,12 +484,16 @@ func TestWebPage_NavigationLocked(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Set the navigation lock & verify it changed.
-	page.SetNavigationLocked(true)
-	if !page.NavigationLocked() {
+	if err := page.SetNavigationLocked(true); err != nil {
+		t.Fatal(err)
+	}
+	if v, err := page.NavigationLocked(); err != nil {
+		t.Fatal(err)
+	} else if !v {
 		t.Fatal("expected navigation locked")
 	}
 }
@@ -447,11 +503,13 @@ func TestWebPage_OfflineStoragePath(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Retrieve storage path and ensure it's not blank.
-	if v := page.OfflineStoragePath(); v == `` {
+	if v, err := page.OfflineStoragePath(); err != nil {
+		t.Fatal(err)
+	} else if v == `` {
 		t.Fatal("expected path")
 	}
 }
@@ -461,11 +519,13 @@ func TestWebPage_OfflineStorageQuota(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Retrieve storage quota and ensure it's non-zero.
-	if v := page.OfflineStorageQuota(); v == 0 {
+	if v, err := page.OfflineStorageQuota(); err != nil {
+		t.Fatal(err)
+	} else if v == 0 {
 		t.Fatal("expected quota")
 	}
 }
@@ -475,12 +535,16 @@ func TestWebPage_OwnsPages(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Set value & verify it changed.
-	page.SetOwnsPages(true)
-	if !page.OwnsPages() {
+	if err := page.SetOwnsPages(true); err != nil {
+		t.Fatal(err)
+	}
+	if v, err := page.OwnsPages(); err != nil {
+		t.Fatal(err)
+	} else if !v {
 		t.Fatal("expected true")
 	}
 }
@@ -490,18 +554,26 @@ func TestWebPage_PageWindowNames(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Set content to open windows.
-	page.SetOwnsPages(true)
-	page.SetContent(`<html><body><a id="link" target="win1" href="/win1.html">CLICK ME</a></body></html>`)
+	if err := page.SetOwnsPages(true); err != nil {
+		t.Fatal(err)
+	}
+	if err := page.SetContent(`<html><body><a id="link" target="win1" href="/win1.html">CLICK ME</a></body></html>`); err != nil {
+		t.Fatal(err)
+	}
 
 	// Click the link.
-	page.EvaluateJavaScript(`function() { document.body.querySelector("#link").click() }`)
+	if _, err := page.EvaluateJavaScript(`function() { document.body.querySelector("#link").click() }`); err != nil {
+		t.Fatal(err)
+	}
 
 	// Retrieve a list of window names.
-	if names := page.PageWindowNames(); !reflect.DeepEqual(names, []string{"win1"}) {
+	if names, err := page.PageWindowNames(); err != nil {
+		t.Fatal(err)
+	} else if !reflect.DeepEqual(names, []string{"win1"}) {
 		t.Fatalf("unexpected names: %+v", names)
 	}
 }
@@ -524,24 +596,34 @@ func TestWebPage_Pages(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Open root page.
-	page.SetOwnsPages(true)
+	if err := page.SetOwnsPages(true); err != nil {
+		t.Fatal(err)
+	}
 	if err := page.Open(srv.URL); err != nil {
 		t.Fatal(err)
 	}
 
 	// Click the link.
-	page.EvaluateJavaScript(`function() { document.body.querySelector("#link").click() }`)
+	if _, err := page.EvaluateJavaScript(`function() { document.body.querySelector("#link").click() }`); err != nil {
+		t.Fatal(err)
+	}
 
 	// Retrieve a list of window names.
-	if pages := page.Pages(); len(pages) != 1 {
+	if pages, err := page.Pages(); err != nil {
+		t.Fatal(err)
+	} else if len(pages) != 1 {
 		t.Fatalf("unexpected count: %d", len(pages))
-	} else if u := pages[0].URL(); u != srv.URL+`/win1.html` {
+	} else if u, err := pages[0].URL(); err != nil {
+		t.Fatal(err)
+	} else if u != srv.URL+`/win1.html` {
 		t.Fatalf("unexpected url: %s", u)
-	} else if name := pages[0].WindowName(); name != `win1` {
+	} else if name, err := pages[0].WindowName(); err != nil {
+		t.Fatal(err)
+	} else if name != `win1` {
 		t.Fatalf("unexpected window name: %s", name)
 	}
 }
@@ -553,54 +635,68 @@ func TestWebPage_PaperSize(t *testing.T) {
 
 	// Ensure initial size is the zero value.
 	t.Run("Initial", func(t *testing.T) {
-		page := p.CreateWebPage()
-		defer page.Close()
+		page := p.MustCreateWebPage()
+		defer MustClosePage(page)
 
-		if sz := page.PaperSize(); !reflect.DeepEqual(sz, phantomjs.PaperSize{}) {
+		if sz, err := page.PaperSize(); err != nil {
+			t.Fatal(err)
+		} else if !reflect.DeepEqual(sz, phantomjs.PaperSize{}) {
 			t.Fatalf("unexpected size: %#v", sz)
 		}
 	})
 
 	// Ensure width/height can be set.
 	t.Run("WidthHeight", func(t *testing.T) {
-		page := p.CreateWebPage()
-		defer page.Close()
+		page := p.MustCreateWebPage()
+		defer MustClosePage(page)
 
 		sz := phantomjs.PaperSize{Width: "5in", Height: "10in"}
-		page.SetPaperSize(sz)
-		if other := page.PaperSize(); !reflect.DeepEqual(other, sz) {
+		if err := page.SetPaperSize(sz); err != nil {
+			t.Fatal(err)
+		}
+		if other, err := page.PaperSize(); err != nil {
+			t.Fatal(err)
+		} else if !reflect.DeepEqual(other, sz) {
 			t.Fatalf("unexpected size: %#v", other)
 		}
 	})
 
 	// Ensure format can be set.
 	t.Run("Format", func(t *testing.T) {
-		page := p.CreateWebPage()
-		defer page.Close()
+		page := p.MustCreateWebPage()
+		defer MustClosePage(page)
 
 		sz := phantomjs.PaperSize{Format: "A4"}
-		page.SetPaperSize(sz)
-		if other := page.PaperSize(); !reflect.DeepEqual(other, sz) {
+		if err := page.SetPaperSize(sz); err != nil {
+			t.Fatal(err)
+		}
+		if other, err := page.PaperSize(); err != nil {
+			t.Fatal(err)
+		} else if !reflect.DeepEqual(other, sz) {
 			t.Fatalf("unexpected size: %#v", other)
 		}
 	})
 
 	// Ensure orientation can be set.
 	t.Run("Orientation", func(t *testing.T) {
-		page := p.CreateWebPage()
-		defer page.Close()
+		page := p.MustCreateWebPage()
+		defer MustClosePage(page)
 
 		sz := phantomjs.PaperSize{Orientation: "landscape"}
-		page.SetPaperSize(sz)
-		if other := page.PaperSize(); !reflect.DeepEqual(other, sz) {
+		if err := page.SetPaperSize(sz); err != nil {
+			t.Fatal(err)
+		}
+		if other, err := page.PaperSize(); err != nil {
+			t.Fatal(err)
+		} else if !reflect.DeepEqual(other, sz) {
 			t.Fatalf("unexpected size: %#v", other)
 		}
 	})
 
 	// Ensure margins can be set.
 	t.Run("Margin", func(t *testing.T) {
-		page := p.CreateWebPage()
-		defer page.Close()
+		page := p.MustCreateWebPage()
+		defer MustClosePage(page)
 
 		sz := phantomjs.PaperSize{
 			Margin: &phantomjs.PaperSizeMargin{
@@ -610,8 +706,12 @@ func TestWebPage_PaperSize(t *testing.T) {
 				Right:  "4in",
 			},
 		}
-		page.SetPaperSize(sz)
-		if other := page.PaperSize(); !reflect.DeepEqual(other, sz) {
+		if err := page.SetPaperSize(sz); err != nil {
+			t.Fatal(err)
+		}
+		if other, err := page.PaperSize(); err != nil {
+			t.Fatal(err)
+		} else if !reflect.DeepEqual(other, sz) {
 			t.Fatalf("unexpected size: %#v", other)
 		}
 	})
@@ -622,12 +722,16 @@ func TestWebPage_PlainText(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Set content & verify plain text.
-	page.SetContent(`<html><body>FOO</body></html>`)
-	if v := page.PlainText(); v != `FOO` {
+	if err := page.SetContent(`<html><body>FOO</body></html>`); err != nil {
+		t.Fatal(err)
+	}
+	if v, err := page.PlainText(); err != nil {
+		t.Fatal(err)
+	} else if v != `FOO` {
 		t.Fatalf("unexpected plain text: %s", v)
 	}
 }
@@ -637,13 +741,17 @@ func TestWebPage_ScrollPosition(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Set and verify position.
 	pos := phantomjs.Position{Top: 10, Left: 20}
-	page.SetScrollPosition(pos)
-	if other := page.ScrollPosition(); !reflect.DeepEqual(other, pos) {
+	if err := page.SetScrollPosition(pos); err != nil {
+		t.Fatal(err)
+	}
+	if other, err := page.ScrollPosition(); err != nil {
+		t.Fatal(err)
+	} else if !reflect.DeepEqual(other, pos) {
 		t.Fatalf("unexpected position: %#v", pos)
 	}
 }
@@ -653,8 +761,8 @@ func TestWebPage_Settings(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Set and verify settings.
 	settings := phantomjs.WebPageSettings{
@@ -668,8 +776,12 @@ func TestWebPage_Settings(t *testing.T) {
 		WebSecurityEnabled:            true,
 		ResourceTimeout:               10 * time.Second,
 	}
-	page.SetSettings(settings)
-	if other := page.Settings(); !reflect.DeepEqual(other, settings) {
+	if err := page.SetSettings(settings); err != nil {
+		t.Fatal(err)
+	}
+	if other, err := page.Settings(); err != nil {
+		t.Fatal(err)
+	} else if !reflect.DeepEqual(other, settings) {
 		t.Fatalf("unexpected settings: %#v", other)
 	}
 }
@@ -679,12 +791,16 @@ func TestWebPage_Title(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Set & verify title.
-	page.SetContent(`<html><head><title>FOO</title></head><body>BAR</body></html>`)
-	if v := page.Title(); v != `FOO` {
+	if err := page.SetContent(`<html><head><title>FOO</title></head><body>BAR</body></html>`); err != nil {
+		t.Fatal(err)
+	}
+	if v, err := page.Title(); err != nil {
+		t.Fatal(err)
+	} else if v != `FOO` {
 		t.Fatalf("unexpected plain text: %s", v)
 	}
 }
@@ -694,12 +810,16 @@ func TestWebPage_ViewportSize(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Set and verify size.
-	page.SetViewportSize(100, 200)
-	if w, h := page.ViewportSize(); w != 100 || h != 200 {
+	if err := page.SetViewportSize(100, 200); err != nil {
+		t.Fatal(err)
+	}
+	if w, h, err := page.ViewportSize(); err != nil {
+		t.Fatal(err)
+	} else if w != 100 || h != 200 {
 		t.Fatalf("unexpected size: w=%d, h=%d", w, h)
 	}
 }
@@ -709,12 +829,16 @@ func TestWebPage_ZoomFactor(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Set factor & verify it changed.
-	page.SetZoomFactor(2.5)
-	if v := page.ZoomFactor(); v != 2.5 {
+	if err := page.SetZoomFactor(2.5); err != nil {
+		t.Fatal(err)
+	}
+	if v, err := page.ZoomFactor(); err != nil {
+		t.Fatal(err)
+	} else if v != 2.5 {
 		t.Fatalf("unexpected zoom factor: %f", v)
 	}
 }
@@ -724,8 +848,8 @@ func TestWebPage_AddCookie(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Test data.
 	cookie := &http.Cookie{
@@ -738,12 +862,16 @@ func TestWebPage_AddCookie(t *testing.T) {
 	}
 
 	// Add the cookie.
-	if !page.AddCookie(cookie) {
+	if v, err := page.AddCookie(cookie); err != nil {
+		t.Fatal(err)
+	} else if !v {
 		t.Fatal("could not add cookie")
 	}
 
 	// Retrieve and verify the cookies.
-	if other := page.Cookies(); len(other) != 1 {
+	if other, err := page.Cookies(); err != nil {
+		t.Fatal(err)
+	} else if len(other) != 1 {
 		t.Fatalf("unexpected cookie count: %d", len(other))
 	} else if !reflect.DeepEqual(other[0], cookie) {
 		t.Fatalf("unexpected cookie(0): %#v", other)
@@ -755,19 +883,27 @@ func TestWebPage_ClearCookies(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Add a cookie.
-	if !page.AddCookie(&http.Cookie{Domain: ".example1.com", Name: "NAME1", Path: "/", Value: "VALUE1"}) {
+	if v, err := page.AddCookie(&http.Cookie{Domain: ".example1.com", Name: "NAME1", Path: "/", Value: "VALUE1"}); err != nil {
+		t.Fatal(err)
+	} else if !v {
 		t.Fatal("could not add cookie")
-	} else if cookies := page.Cookies(); len(cookies) != 1 {
+	} else if cookies, err := page.Cookies(); err != nil {
+		t.Fatal(err)
+	} else if len(cookies) != 1 {
 		t.Fatalf("unexpected cookie count: %d", len(cookies))
 	}
 
 	// Clear cookies and verify they are gone.
-	page.ClearCookies()
-	if cookies := page.Cookies(); len(cookies) != 0 {
+	if err := page.ClearCookies(); err != nil {
+		t.Fatal(err)
+	}
+	if cookies, err := page.Cookies(); err != nil {
+		t.Fatal(err)
+	} else if len(cookies) != 0 {
 		t.Fatalf("unexpected cookie count: %d", len(cookies))
 	}
 }
@@ -777,22 +913,35 @@ func TestWebPage_DeleteCookie(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Add a cookies.
-	if !page.AddCookie(&http.Cookie{Domain: ".example1.com", Name: "NAME1", Path: "/", Value: "VALUE1"}) {
+	if v, err := page.AddCookie(&http.Cookie{Domain: ".example1.com", Name: "NAME1", Path: "/", Value: "VALUE1"}); err != nil {
+		t.Fatal(err)
+	} else if !v {
 		t.Fatal("could not add cookie")
-	} else if !page.AddCookie(&http.Cookie{Domain: ".example1.com", Name: "NAME2", Path: "/", Value: "VALUE2"}) {
+	}
+	if v, err := page.AddCookie(&http.Cookie{Domain: ".example1.com", Name: "NAME2", Path: "/", Value: "VALUE2"}); err != nil {
+		t.Fatal(err)
+	} else if !v {
 		t.Fatal("could not add cookie")
-	} else if cookies := page.Cookies(); len(cookies) != 2 {
+	}
+	if cookies, err := page.Cookies(); err != nil {
+		t.Fatal(err)
+	} else if len(cookies) != 2 {
 		t.Fatalf("unexpected cookie count: %d", len(cookies))
 	}
 
 	// Delete first cookie.
-	if !page.DeleteCookie("NAME1") {
+	if v, err := page.DeleteCookie("NAME1"); err != nil {
+		t.Fatal(err)
+	} else if !v {
 		t.Fatal("could not delete cookie")
-	} else if cookies := page.Cookies(); len(cookies) != 1 {
+	}
+	if cookies, err := page.Cookies(); err != nil {
+		t.Fatal(err)
+	} else if len(cookies) != 1 {
 		t.Fatalf("unexpected cookie count: %d", len(cookies))
 	} else if cookies[0].Name != "NAME2" {
 		t.Fatalf("unexpected cookie(0) name: %s", cookies[0].Name)
@@ -805,14 +954,18 @@ func TestWebPage_EvaluateAsync(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Execute after one second.
-	page.EvaluateAsync(`function() { window.testValue = "OK" }`, 1*time.Second)
+	if err := page.EvaluateAsync(`function() { window.testValue = "OK" }`, 1*time.Second); err != nil {
+		t.Fatal(err)
+	}
 
 	// Value should not be set immediately.
-	if value := page.EvaluateJavaScript(`function() { return window.testValue }`); value != nil {
+	if value, err := page.EvaluateJavaScript(`function() { return window.testValue }`); err != nil {
+		t.Fatal(err)
+	} else if value != nil {
 		t.Fatalf("unexpected value: %#v", value)
 	}
 
@@ -820,7 +973,9 @@ func TestWebPage_EvaluateAsync(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// Value should hopefully be set now.
-	if value := page.EvaluateJavaScript(`function() { return window.testValue }`); value != "OK" {
+	if value, err := page.EvaluateJavaScript(`function() { return window.testValue }`); err != nil {
+		t.Fatal(err)
+	} else if value != "OK" {
 		t.Fatalf("unexpected value: %#v", value)
 	}
 }
@@ -830,12 +985,16 @@ func TestWebPage_Evaluate(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
-	page.SetContent(`<html><head><title>FOO</title></head><body>BAR</body></html>`)
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
+	if err := page.SetContent(`<html><head><title>FOO</title></head><body>BAR</body></html>`); err != nil {
+		t.Fatal(err)
+	}
 
 	// Retrieve title.
-	if value := page.EvaluateJavaScript(`function() { return document.title }`); value != "FOO" {
+	if value, err := page.EvaluateJavaScript(`function() { return document.title }`); err != nil {
+		t.Fatal(err)
+	} else if value != "FOO" {
 		t.Fatalf("unexpected value: %#v", value)
 	}
 }
@@ -845,23 +1004,37 @@ func TestWebPage_Page(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Set content to open windows.
-	page.SetOwnsPages(true)
-	page.SetContent(`<html><body><a id="link" target="win1" href="/win1.html">CLICK ME</a></body></html>`)
+	if err := page.SetOwnsPages(true); err != nil {
+		t.Fatal(err)
+	}
+	if err := page.SetContent(`<html><body><a id="link" target="win1" href="/win1.html">CLICK ME</a></body></html>`); err != nil {
+		t.Fatal(err)
+	}
 
 	// Click the link.
-	page.EvaluateJavaScript(`function() { document.body.querySelector("#link").click() }`)
+	if _, err := page.EvaluateJavaScript(`function() { document.body.querySelector("#link").click() }`); err != nil {
+		t.Fatal(err)
+	}
 
 	// Retrieve a window by name.
-	if childPage := page.Page("win1"); childPage == nil || childPage.WindowName() != "win1" {
+	if childPage, err := page.Page("win1"); err != nil {
+		t.Fatal(err)
+	} else if childPage == nil {
+		t.Fatalf("unexpected page: %#v", childPage)
+	} else if name, err := childPage.WindowName(); err != nil {
+		t.Fatal(err)
+	} else if name != "win1" {
 		t.Fatalf("unexpected page: %#v", childPage)
 	}
 
 	// Non-existent pages should return nil.
-	if childPage := page.Page("bad_page"); childPage != nil {
+	if childPage, err := page.Page("bad_page"); err != nil {
+		t.Fatal(err)
+	} else if childPage != nil {
 		t.Fatalf("expected nil page: %#v", childPage)
 	}
 }
@@ -884,8 +1057,8 @@ func TestWebPage_GoBackForward(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Open root page.
 	if err := page.Open(srv.URL); err != nil {
@@ -893,20 +1066,32 @@ func TestWebPage_GoBackForward(t *testing.T) {
 	}
 
 	// Click the link and verify location.
-	page.EvaluateJavaScript(`function() { document.body.querySelector("#link").click() }`)
-	if u := page.URL(); u != srv.URL+"/page1.html" {
+	if _, err := page.EvaluateJavaScript(`function() { document.body.querySelector("#link").click() }`); err != nil {
+		t.Fatal(err)
+	}
+	if u, err := page.URL(); err != nil {
+		t.Fatal(err)
+	} else if u != srv.URL+"/page1.html" {
 		t.Fatalf("unexpected page: %s", u)
 	}
 
 	// Navigate back & verify location.
-	page.GoBack()
-	if u := page.URL(); u != srv.URL+"/" {
+	if err := page.GoBack(); err != nil {
+		t.Fatal(err)
+	}
+	if u, err := page.URL(); err != nil {
+		t.Fatal(err)
+	} else if u != srv.URL+"/" {
 		t.Fatalf("unexpected page: %s", u)
 	}
 
 	// Navigate forward & verify location.
-	page.GoForward()
-	if u := page.URL(); u != srv.URL+"/page1.html" {
+	if err := page.GoForward(); err != nil {
+		t.Fatal(err)
+	}
+	if u, err := page.URL(); err != nil {
+		t.Fatal(err)
+	} else if u != srv.URL+"/page1.html" {
 		t.Fatalf("unexpected page: %s", u)
 	}
 }
@@ -931,8 +1116,8 @@ func TestWebPage_Go(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Open root page.
 	if err := page.Open(srv.URL); err != nil {
@@ -940,21 +1125,35 @@ func TestWebPage_Go(t *testing.T) {
 	}
 
 	// Click the links on two pages and verify location.
-	page.EvaluateJavaScript(`function() { document.body.querySelector("#link").click() }`)
-	page.EvaluateJavaScript(`function() { document.body.querySelector("#link").click() }`)
-	if u := page.URL(); u != srv.URL+"/page2.html" {
+	if _, err := page.EvaluateJavaScript(`function() { document.body.querySelector("#link").click() }`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := page.EvaluateJavaScript(`function() { document.body.querySelector("#link").click() }`); err != nil {
+		t.Fatal(err)
+	}
+	if u, err := page.URL(); err != nil {
+		t.Fatal(err)
+	} else if u != srv.URL+"/page2.html" {
 		t.Fatalf("unexpected page: %s", u)
 	}
 
 	// Navigate back & verify location.
-	page.Go(-2)
-	if u := page.URL(); u != srv.URL+"/" {
+	if err := page.Go(-2); err != nil {
+		t.Fatal(err)
+	}
+	if u, err := page.URL(); err != nil {
+		t.Fatal(err)
+	} else if u != srv.URL+"/" {
 		t.Fatalf("unexpected page: %s", u)
 	}
 
 	// Navigate forward & verify location.
-	page.Go(1)
-	if u := page.URL(); u != srv.URL+"/page1.html" {
+	if err := page.Go(1); err != nil {
+		t.Fatal(err)
+	}
+	if u, err := page.URL(); err != nil {
+		t.Fatal(err)
+	} else if u != srv.URL+"/page1.html" {
 		t.Fatalf("unexpected page: %s", u)
 	}
 }
@@ -977,8 +1176,8 @@ func TestWebPage_IncludeJS(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Open root page.
 	if err := page.Open(srv.URL); err != nil {
@@ -986,10 +1185,14 @@ func TestWebPage_IncludeJS(t *testing.T) {
 	}
 
 	// Include external script.
-	page.IncludeJS(srv.URL + "/script.js")
+	if err := page.IncludeJS(srv.URL + "/script.js"); err != nil {
+		t.Fatal(err)
+	}
 
 	// Verify that script ran.
-	if v := page.Evaluate(`function() { return window.testValue }`); v != "INCLUDED" {
+	if v, err := page.Evaluate(`function() { return window.testValue }`); err != nil {
+		t.Fatal(err)
+	} else if v != "INCLUDED" {
 		t.Fatalf("unexpected test value: %#v", v)
 	}
 }
@@ -999,8 +1202,8 @@ func TestWebPage_InjectJS(t *testing.T) {
 	p := MustOpenNewProcess()
 	defer p.MustClose()
 
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Write local script.
 	if err := ioutil.WriteFile(filepath.Join(p.Path(), "script.js"), []byte(`window.testValue = 'INCLUDED'`), 0600); err != nil {
@@ -1013,7 +1216,9 @@ func TestWebPage_InjectJS(t *testing.T) {
 	}
 
 	// Verify that script ran.
-	if v := page.Evaluate(`function() { return window.testValue }`); v != "INCLUDED" {
+	if v, err := page.Evaluate(`function() { return window.testValue }`); err != nil {
+		t.Fatal(err)
+	} else if v != "INCLUDED" {
 		t.Fatalf("unexpected test value: %#v", v)
 	}
 }
@@ -1031,11 +1236,13 @@ func TestWebPage_Open(t *testing.T) {
 	defer p.MustClose()
 
 	// Create & open page.
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 	if err := page.Open(srv.URL); err != nil {
 		t.Fatal(err)
-	} else if content := page.Content(); content != `<html><head></head><body>OK</body></html>` {
+	} else if content, err := page.Content(); err != nil {
+		t.Fatal(err)
+	} else if content != `<html><head></head><body>OK</body></html>` {
 		t.Fatalf("unexpected content: %q", content)
 	}
 }
@@ -1055,20 +1262,26 @@ func TestWebPage_Reload(t *testing.T) {
 	defer p.MustClose()
 
 	// Create & open page.
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 	if err := page.Open(srv.URL); err != nil {
 		t.Fatal(err)
 	}
 
 	// First time the counter should be 1.
-	if content := page.Content(); content != `<html><head></head><body>1</body></html>` {
+	if content, err := page.Content(); err != nil {
+		t.Fatal(err)
+	} else if content != `<html><head></head><body>1</body></html>` {
 		t.Fatalf("unexpected content: %q", content)
 	}
 
 	// Reload the page and the counter should increment.
-	page.Reload()
-	if content := page.Content(); content != `<html><head></head><body>2</body></html>` {
+	if err := page.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	if content, err := page.Content(); err != nil {
+		t.Fatal(err)
+	} else if content != `<html><head></head><body>2</body></html>` {
 		t.Fatalf("unexpected content: %q", content)
 	}
 }
@@ -1080,13 +1293,20 @@ func TestWebPage_RenderBase64(t *testing.T) {
 	defer p.MustClose()
 
 	// Create & open page.
-	page := p.CreateWebPage()
-	defer page.Close()
-	page.SetContent(`<html><head></head><body>TEST</body></html>`)
-	page.SetViewportSize(100, 200)
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
+	if err := page.SetContent(`<html><head></head><body>TEST</body></html>`); err != nil {
+		t.Fatal(err)
+	}
+	if err := page.SetViewportSize(100, 200); err != nil {
+		t.Fatal(err)
+	}
 
 	// Render page.
-	data := page.RenderBase64("png")
+	data, err := page.RenderBase64("png")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Decode data.
 	buf, err := base64.StdEncoding.DecodeString(data)
@@ -1110,14 +1330,20 @@ func TestWebPage_Render(t *testing.T) {
 	defer p.MustClose()
 
 	// Create & open page.
-	page := p.CreateWebPage()
-	defer page.Close()
-	page.SetContent(`<html><head></head><body>TEST</body></html>`)
-	page.SetViewportSize(100, 200)
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
+	if err := page.SetContent(`<html><head></head><body>TEST</body></html>`); err != nil {
+		t.Fatal(err)
+	}
+	if err := page.SetViewportSize(100, 200); err != nil {
+		t.Fatal(err)
+	}
 
 	// Render page.
 	filename := filepath.Join(p.Path(), "test.png")
-	page.Render(filename, "png", 100)
+	if err := page.Render(filename, "png", 100); err != nil {
+		t.Fatal(err)
+	}
 
 	// Read file.
 	buf, err := ioutil.ReadFile(filename)
@@ -1141,19 +1367,31 @@ func TestWebPage_SendMouseEvent(t *testing.T) {
 	defer p.MustClose()
 
 	// Create & open page.
-	page := p.CreateWebPage()
-	defer page.Close()
-	page.SetContent(`<html><head><script>window.onclick = function(e) { window.testX = e.x; window.testY = e.y; window.testButton = e.button }</script></head><body></body></html>`)
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
+	if err := page.SetContent(`<html><head><script>window.onclick = function(e) { window.testX = e.x; window.testY = e.y; window.testButton = e.button }</script></head><body></body></html>`); err != nil {
+		t.Fatal(err)
+	}
 
 	// Send mouse event.
-	page.SendMouseEvent("click", 100, 200, "middle")
+	if err := page.SendMouseEvent("click", 100, 200, "middle"); err != nil {
+		t.Fatal(err)
+	}
 
 	// Verify test variables.
-	if x := page.Evaluate(`function() { return window.testX }`); x != float64(100) {
+	if x, err := page.Evaluate(`function() { return window.testX }`); err != nil {
+		t.Fatal(err)
+	} else if x != float64(100) {
 		t.Fatalf("unexpected x: %d", x)
-	} else if y := page.Evaluate(`function() { return window.testY }`); y != float64(200) {
+	}
+	if y, err := page.Evaluate(`function() { return window.testY }`); err != nil {
+		t.Fatal(err)
+	} else if y != float64(200) {
 		t.Fatalf("unexpected y: %d", y)
-	} else if button := page.Evaluate(`function() { return window.testButton }`); button != float64(1) {
+	}
+	if button, err := page.Evaluate(`function() { return window.testButton }`); err != nil {
+		t.Fatal(err)
+	} else if button != float64(1) {
 		t.Fatalf("unexpected button: %d", button)
 	}
 }
@@ -1165,23 +1403,41 @@ func TestWebPage_SendKeyboardEvent(t *testing.T) {
 	defer p.MustClose()
 
 	// Create & open page.
-	page := p.CreateWebPage()
-	defer page.Close()
-	page.SetContent(`<html><head><script>document.onkeydown = function(e) { window.testKey = e.keyCode; window.testAlt = e.altKey; window.testCtrl = e.ctrlKey; window.testMeta = e.metaKey; window.testShift = e.shiftKey;  }</script></head><body></body></html>`)
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
+	if err := page.SetContent(`<html><head><script>document.onkeydown = function(e) { window.testKey = e.keyCode; window.testAlt = e.altKey; window.testCtrl = e.ctrlKey; window.testMeta = e.metaKey; window.testShift = e.shiftKey;  }</script></head><body></body></html>`); err != nil {
+		t.Fatal(err)
+	}
 
 	// Send event.
-	page.SendKeyboardEvent("keydown", "A", phantomjs.AltKey|phantomjs.CtrlKey|phantomjs.MetaKey|phantomjs.ShiftKey)
+	if err := page.SendKeyboardEvent("keydown", "A", phantomjs.AltKey|phantomjs.CtrlKey|phantomjs.MetaKey|phantomjs.ShiftKey); err != nil {
+		t.Fatal(err)
+	}
 
 	// Verify test variables.
-	if key := page.Evaluate(`function() { return window.testKey }`); key != float64(65) {
+	if key, err := page.Evaluate(`function() { return window.testKey }`); err != nil {
+		t.Fatal(err)
+	} else if key != float64(65) {
 		t.Fatalf("unexpected key: %s", key)
-	} else if altKey := page.Evaluate(`function() { return window.testAlt }`); altKey != true {
+	}
+	if altKey, err := page.Evaluate(`function() { return window.testAlt }`); err != nil {
+		t.Fatal(err)
+	} else if altKey != true {
 		t.Fatalf("unexpected alt key: %v", altKey)
-	} else if ctrlKey := page.Evaluate(`function() { return window.testCtrl }`); ctrlKey != true {
+	}
+	if ctrlKey, err := page.Evaluate(`function() { return window.testCtrl }`); err != nil {
+		t.Fatal(err)
+	} else if ctrlKey != true {
 		t.Fatalf("unexpected ctrl key: %v", ctrlKey)
-	} else if metaKey := page.Evaluate(`function() { return window.testMeta }`); metaKey != true {
+	}
+	if metaKey, err := page.Evaluate(`function() { return window.testMeta }`); err != nil {
+		t.Fatal(err)
+	} else if metaKey != true {
 		t.Fatalf("unexpected meta key: %v", metaKey)
-	} else if shiftKey := page.Evaluate(`function() { return window.testShift }`); shiftKey != true {
+	}
+	if shiftKey, err := page.Evaluate(`function() { return window.testShift }`); err != nil {
+		t.Fatal(err)
+	} else if shiftKey != true {
 		t.Fatalf("unexpected shift key: %v", shiftKey)
 	}
 }
@@ -1193,14 +1449,21 @@ func TestWebPage_SetContentAndURL(t *testing.T) {
 	defer p.MustClose()
 
 	// Create & open page.
-	page := p.CreateWebPage()
-	defer page.Close()
-	page.SetContentAndURL(`<html><body>FOO</body></html>`, "http://google.com")
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
+	if err := page.SetContentAndURL(`<html><body>FOO</body></html>`, "http://google.com"); err != nil {
+		t.Fatal(err)
+	}
 
 	// Verify content & URL.
-	if content := page.Content(); content != `<html><head></head><body>FOO</body></html>` {
+	if content, err := page.Content(); err != nil {
+		t.Fatal(err)
+	} else if content != `<html><head></head><body>FOO</body></html>` {
 		t.Fatalf("unexpected content: %s", content)
-	} else if u := page.URL(); u != `http://google.com/` {
+	}
+	if u, err := page.URL(); err != nil {
+		t.Fatal(err)
+	} else if u != `http://google.com/` {
 		t.Fatalf("unexpected URL: %s", u)
 	}
 }
@@ -1212,11 +1475,13 @@ func TestWebPage_Stop(t *testing.T) {
 	defer p.MustClose()
 
 	// Create & open page.
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 
 	// Call stop and ensure it doesn't blow up.
-	page.Stop()
+	if err := page.Stop(); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // Ensure web page can switch to the focused frame.
@@ -1241,20 +1506,26 @@ func TestWebPage_SwitchToFocusedFrame(t *testing.T) {
 	defer p.MustClose()
 
 	// Create & open page.
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 	if err := page.Open(srv.URL); err != nil {
 		t.Fatal(err)
 	}
 
 	// Check initial current frame.
-	if other := page.FrameName(); other != `` {
+	if other, err := page.FrameName(); err != nil {
+		t.Fatal(err)
+	} else if other != `` {
 		t.Fatalf("unexpected value: %#v", other)
 	}
 
 	// Switch to focused frame and verify.
-	page.SwitchToFocusedFrame()
-	if other := page.FrameName(); other != `FRAME2` {
+	if err := page.SwitchToFocusedFrame(); err != nil {
+		t.Fatal(err)
+	}
+	if other, err := page.FrameName(); err != nil {
+		t.Fatal(err)
+	} else if other != `FRAME2` {
 		t.Fatalf("unexpected value: %#v", other)
 	}
 }
@@ -1290,8 +1561,8 @@ func TestWebPage_UploadFile(t *testing.T) {
 	defer p.MustClose()
 
 	// Create & open page.
-	page := p.CreateWebPage()
-	defer page.Close()
+	page := p.MustCreateWebPage()
+	defer MustClosePage(page)
 	if err := page.Open(srv.URL); err != nil {
 		t.Fatal(err)
 	}
@@ -1303,10 +1574,14 @@ func TestWebPage_UploadFile(t *testing.T) {
 	}
 
 	// Upload to field
-	page.UploadFile("input[name=myfile]", path)
+	if err := page.UploadFile("input[name=myfile]", path); err != nil {
+		t.Fatal(err)
+	}
 
 	// Submit form.
-	page.Evaluate(`function() { document.body.querySelector("#myForm").submit() }`)
+	if _, err := page.Evaluate(`function() { document.body.querySelector("#myForm").submit() }`); err != nil {
+		t.Fatal(err)
+	}
 
 	// Wait for upload.
 	buf := <-uploadData
@@ -1337,6 +1612,22 @@ func MustOpenNewProcess() *Process {
 // MustClose closes the process. Panic on error.
 func (p *Process) MustClose() {
 	if err := p.Close(); err != nil {
+		panic(err)
+	}
+}
+
+// MustCreateWebPage creates a web page. Panic on error.
+func (p *Process) MustCreateWebPage() *phantomjs.WebPage {
+	page, err := p.CreateWebPage()
+	if err != nil {
+		panic(err)
+	}
+	return page
+}
+
+// MustClosePage closes page. Panic on error.
+func MustClosePage(page *phantomjs.WebPage) {
+	if err := page.Close(); err != nil {
 		panic(err)
 	}
 }
