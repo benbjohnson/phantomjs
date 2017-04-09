@@ -584,8 +584,13 @@ func (p *WebPage) SetSettings(settings WebPageSettings) {
 	p.ref.process.mustDoJSON("POST", "/webpage/SetSettings", req, nil)
 }
 
+// Title returns the title of the web page.
 func (p *WebPage) Title() string {
-	panic("TODO")
+	var resp struct {
+		Value string `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/Title", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Value
 }
 
 // URL returns the current URL of the web page.
@@ -1002,7 +1007,7 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/SetScrollPosition': return handleWebpageSetScrollPosition(request, response);
 			case '/webpage/Settings': return handleWebpageSettings(request, response);
 			case '/webpage/SetSettings': return handleWebpageSetSettings(request, response);
-
+			case '/webpage/Title': return handleWebpageTitle(request, response);
 			case '/webpage/URL': return handleWebpageURL(request, response);
 			
 			case '/webpage/SwitchToFrameName': return handleWebpageSwitchToFrameName(request, response);
@@ -1270,6 +1275,11 @@ function handleWebpageSetSettings(request, response) {
 	response.closeGracefully();
 }
 
+function handleWebpageTitle(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.title}));
+	response.closeGracefully();
+}
 
 function handleWebpageURL(request, response) {
 	var page = ref(JSON.parse(request.post).ref);

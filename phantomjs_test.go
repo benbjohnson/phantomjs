@@ -666,6 +666,21 @@ func TestWebPage_Settings(t *testing.T) {
 	}
 }
 
+// Ensure process can retrieve the title of a page.
+func TestWebPage_Title(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Set & verify title.
+	page.SetContent(`<html><head><title>FOO</title></head><body>BAR</body></html>`)
+	if v := page.Title(); v != `FOO` {
+		t.Fatalf("unexpected title: %s", v)
+	}
+}
+
 // Ensure web page can open a URL.
 func TestWebPage_Open(t *testing.T) {
 	// Serve web page.
