@@ -834,6 +834,125 @@ func TestWebPage_Evaluate(t *testing.T) {
 	}
 }
 
+// Ensure process can retrieve a page by window name.
+func TestWebPage_Page(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Set content to open windows.
+	page.SetOwnsPages(true)
+	page.SetContent(`<html><body><a id="link" target="win1" href="/win1.html">CLICK ME</a></body></html>`)
+
+	// Click the link.
+	page.EvaluateJavaScript(`function() { document.body.querySelector("#link").click() }`)
+
+	// Retrieve a window by name.
+	if childPage := page.Page("win1"); childPage == nil || childPage.WindowName() != "win1" {
+		t.Fatalf("unexpected page: %#v", childPage)
+	}
+
+	// Non-existent pages should return nil.
+	if childPage := page.Page("bad_page"); childPage != nil {
+		t.Fatalf("expected nil page: %#v", childPage)
+	}
+}
+
+// Ensure process can moves forward and back in history.
+func TestWebPage_GoBackForward(t *testing.T) {
+	// Mock external HTTP server.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			w.Write([]byte(`<html><body><a id="link" href="/page1.html">CLICK ME</a></body></html>`))
+		case "/page1.html":
+			w.Write([]byte(`<html><body>FOO</body></html>`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Open root page.
+	if err := page.Open(srv.URL); err != nil {
+		t.Fatal(err)
+	}
+
+	// Click the link and verify location.
+	page.EvaluateJavaScript(`function() { document.body.querySelector("#link").click() }`)
+	if u := page.URL(); u != srv.URL+"/page1.html" {
+		t.Fatalf("unexpected page: %s", u)
+	}
+
+	// Navigate back & verify location.
+	page.GoBack()
+	if u := page.URL(); u != srv.URL+"/" {
+		t.Fatalf("unexpected page: %s", u)
+	}
+
+	// Navigate forward & verify location.
+	page.GoForward()
+	if u := page.URL(); u != srv.URL+"/page1.html" {
+		t.Fatalf("unexpected page: %s", u)
+	}
+}
+
+// Ensure process can move by relative index.
+func TestWebPage_Go(t *testing.T) {
+	// Mock external HTTP server.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			w.Write([]byte(`<html><body><a id="link" href="/page1.html">CLICK ME</a></body></html>`))
+		case "/page1.html":
+			w.Write([]byte(`<html><body><a id="link" href="/page2.html">CLICK ME</a></body></html>`))
+		case "/page2.html":
+			w.Write([]byte(`<html><body>FOO</body></html>`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Open root page.
+	if err := page.Open(srv.URL); err != nil {
+		t.Fatal(err)
+	}
+
+	// Click the links on two pages and verify location.
+	page.EvaluateJavaScript(`function() { document.body.querySelector("#link").click() }`)
+	page.EvaluateJavaScript(`function() { document.body.querySelector("#link").click() }`)
+	if u := page.URL(); u != srv.URL+"/page2.html" {
+		t.Fatalf("unexpected page: %s", u)
+	}
+
+	// Navigate back & verify location.
+	page.Go(-2)
+	if u := page.URL(); u != srv.URL+"/" {
+		t.Fatalf("unexpected page: %s", u)
+	}
+
+	// Navigate forward & verify location.
+	page.Go(1)
+	if u := page.URL(); u != srv.URL+"/page1.html" {
+		t.Fatalf("unexpected page: %s", u)
+	}
+}
+
 // Ensure web page can open a URL.
 func TestWebPage_Open(t *testing.T) {
 	// Serve web page.

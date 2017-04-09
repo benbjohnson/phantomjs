@@ -698,20 +698,33 @@ func (p *WebPage) Evaluate(script string) interface{} {
 	return resp.ReturnValue
 }
 
-func (p *WebPage) GetPage() {
-	panic("TODO")
+// Page returns an owned page by window name.
+// Returns nil if the page cannot be found.
+func (p *WebPage) Page(name string) *WebPage {
+	var resp struct {
+		Ref refJSON `json:"ref"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/Page", map[string]interface{}{"ref": p.ref.id, "name": name}, &resp)
+	if resp.Ref.ID == "" {
+		return nil
+	}
+	return &WebPage{ref: newRef(p.ref.process, resp.Ref.ID)}
 }
 
+// GoBack navigates back to the previous page.
 func (p *WebPage) GoBack() {
-	panic("TODO")
+	p.ref.process.mustDoJSON("POST", "/webpage/GoBack", map[string]interface{}{"ref": p.ref.id}, nil)
 }
 
+// GoForward navigates to the next page.
 func (p *WebPage) GoForward() {
-	panic("TODO")
+	p.ref.process.mustDoJSON("POST", "/webpage/GoForward", map[string]interface{}{"ref": p.ref.id}, nil)
 }
 
-func (p *WebPage) Go() {
-	panic("TODO")
+// Go navigates to the page in history by relative offset.
+// A positive index moves forward, a negative index moves backwards.
+func (p *WebPage) Go(index int) {
+	p.ref.process.mustDoJSON("POST", "/webpage/Go", map[string]interface{}{"ref": p.ref.id, "index": index}, nil)
 }
 
 func (p *WebPage) IncludeJS() {
@@ -1062,6 +1075,10 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/EvaluateAsync': return handleWebpageEvaluateAsync(request, response);
 			case '/webpage/EvaluateJavaScript': return handleWebpageEvaluateJavaScript(request, response);
 			case '/webpage/Evaluate': return handleWebpageEvaluate(request, response);
+			case '/webpage/Page': return handleWebpagePage(request, response);
+			case '/webpage/GoBack': return handleWebpageGoBack(request, response);
+			case '/webpage/GoForward': return handleWebpageGoForward(request, response);
+			case '/webpage/Go': return handleWebpageGo(request, response);
 			default: return handleNotFound(request, response);
 		}
 	} catch(e) {
@@ -1447,6 +1464,42 @@ function handleWebpageEvaluate(request, response) {
 	response.write(JSON.stringify({returnValue: returnValue}));
 	response.closeGracefully();
 }
+
+function handleWebpagePage(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	var p = page.getPage(msg.name);
+
+	response.statusCode = 200;
+	if (p === null) {
+		response.write(JSON.stringify({}));
+	} else {
+		response.write(JSON.stringify({ref: createRef(p)}));
+	}
+	response.closeGracefully();
+}
+
+function handleWebpageGoBack(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.goBack();
+	response.closeGracefully();
+}
+
+function handleWebpageGoForward(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.goForward();
+	response.closeGracefully();
+}
+
+function handleWebpageGo(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.go(msg.index);
+	response.closeGracefully();
+}
+
 
 function handleNotFound(request, response) {
 	response.statusCode = 404;
