@@ -661,12 +661,15 @@ func (p *WebPage) Close() {
 	p.ref.process.mustDoJSON("POST", "/webpage/Close", map[string]interface{}{"ref": p.ref.id}, nil)
 }
 
-func (p *WebPage) CurrentFrameName() {
-	panic("TODO")
-}
-
-func (p *WebPage) DeleteCookie() {
-	panic("TODO")
+// DeleteCookie removes a cookie with a matching name.
+// Returns true if the cookie was successfully deleted.
+func (p *WebPage) DeleteCookie(name string) bool {
+	var resp struct {
+		ReturnValue bool `json:"returnValue"`
+	}
+	req := map[string]interface{}{"ref": p.ref.id, "name": name}
+	p.ref.process.mustDoJSON("POST", "/webpage/DeleteCookie", req, &resp)
+	return resp.ReturnValue
 }
 
 func (p *WebPage) EvaluateAsync() {
@@ -1043,6 +1046,7 @@ server.listen(system.env["PORT"], function(request, response) {
 
 			case '/webpage/AddCookie': return handleWebpageAddCookie(request, response);
 			case '/webpage/ClearCookies': return handleWebpageClearCookies(request, response);
+			case '/webpage/DeleteCookie': return handleWebpageDeleteCookie(request, response);
 			case '/webpage/SwitchToFrameName': return handleWebpageSwitchToFrameName(request, response);
 			case '/webpage/SwitchToFramePosition': return handleWebpageSwitchToFramePosition(request, response);
 			case '/webpage/Open': return handleWebpageOpen(request, response);
@@ -1366,6 +1370,14 @@ function handleWebpageClearCookies(request, response) {
 	var msg = JSON.parse(request.post);
 	var page = ref(msg.ref);
 	page.clearCookies();
+	response.closeGracefully();
+}
+
+function handleWebpageDeleteCookie(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	var returnValue = page.deleteCookie(msg.name);
+	response.write(JSON.stringify({returnValue: returnValue}));
 	response.closeGracefully();
 }
 
