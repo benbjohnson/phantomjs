@@ -478,8 +478,13 @@ func (p *WebPage) SetOwnsPages(v bool) {
 	p.ref.process.mustDoJSON("POST", "/webpage/set_owns_pages", map[string]interface{}{"ref": p.ref.id, "value": v}, nil)
 }
 
-func (p *WebPage) PageWindowNames() string {
-	panic("TODO")
+// PageWindowNames returns an list of owned window names.
+func (p *WebPage) PageWindowNames() []string {
+	var resp struct {
+		Value []string `json:"value"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/page_window_names", map[string]interface{}{"ref": p.ref.id}, &resp)
+	return resp.Value
 }
 
 func (p *WebPage) Pages() string {
@@ -555,8 +560,14 @@ func (p *WebPage) EvaluateAsync() {
 	panic("TODO")
 }
 
-func (p *WebPage) EvaluateJavaScript() {
-	panic("TODO")
+// EvaluateJavaScript executes a JavaScript function.
+// Returns the value returned by the function.
+func (p *WebPage) EvaluateJavaScript(script string) interface{} {
+	var resp struct {
+		ReturnValue interface{} `json:"returnValue"`
+	}
+	p.ref.process.mustDoJSON("POST", "/webpage/EvaluateJavaScript", map[string]interface{}{"ref": p.ref.id, "script": script}, &resp)
+	return resp.ReturnValue
 }
 
 func (p *WebPage) Evaluate() {
@@ -791,11 +802,13 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/set_offline_storage_quota': return handleWebpageSetOfflineStorageQuota(request, response);
 			case '/webpage/owns_pages': return handleWebpageOwnsPages(request, response);
 			case '/webpage/set_owns_pages': return handleWebpageSetOwnsPages(request, response);
+			case '/webpage/page_window_names': return handleWebpagePageWindowNames(request, response);
 			
 			case '/webpage/switch_to_frame_name': return handleWebpageSwitchToFrameName(request, response);
 			case '/webpage/switch_to_frame_position': return handleWebpageSwitchToFramePosition(request, response);
 			case '/webpage/open': return handleWebpageOpen(request, response);
 			case '/webpage/close': return handleWebpageClose(request, response);
+			case '/webpage/EvaluateJavaScript': return handleWebpageEvaluateJavaScript(request, response);
 			default: return handleNotFound(request, response);
 		}
 	} catch(e) {
@@ -997,6 +1010,13 @@ function handleWebpageSetOwnsPages(request, response) {
 	response.closeGracefully();
 }
 
+function handleWebpagePageWindowNames(request, response) {
+	var page = ref(JSON.parse(request.post).ref);
+	response.write(JSON.stringify({value: page.pagesWindowName}));
+	response.closeGracefully();
+}
+
+
 
 function handleWebpageSwitchToFrameName(request, response) {
 	var msg = JSON.parse(request.post);
@@ -1013,11 +1033,20 @@ function handleWebpageSwitchToFramePosition(request, response) {
 }
 
 function handleWebpageClose(request, response) {
-	var msg = JSON.parse(request.post)
-	var page = ref(msg.ref)
-	page.close()
-	delete(refs, msg.ref)
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.close();
+	delete(refs, msg.ref);
 	response.statusCode = 200;
+	response.closeGracefully();
+}
+
+function handleWebpageEvaluateJavaScript(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	var returnValue = page.evaluateJavaScript(msg.script);
+	response.statusCode = 200;
+	response.write(JSON.stringify({returnValue: returnValue}));
 	response.closeGracefully();
 }
 

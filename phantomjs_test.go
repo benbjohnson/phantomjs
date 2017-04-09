@@ -479,6 +479,27 @@ func TestWebPage_OwnsPages(t *testing.T) {
 	}
 }
 
+// Ensure process can retrive a list of window names opened by the page.
+func TestWebPage_PageWindowNames(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Set content to open windows.
+	page.SetOwnsPages(true)
+	page.SetContent(`<html><body><a id="link" target="win1" href="/win1.html">CLICK ME</a></body></html>`)
+
+	// Click the link.
+	page.EvaluateJavaScript(`function() { document.body.querySelector("#link").click() }`)
+
+	// Retrieve a list of window names.
+	if names := page.PageWindowNames(); !reflect.DeepEqual(names, []string{"win1"}) {
+		t.Fatalf("unexpected names: %+v", names)
+	}
+}
+
 // Ensure web page can open a URL.
 func TestWebPage_Open(t *testing.T) {
 	// Serve web page.
