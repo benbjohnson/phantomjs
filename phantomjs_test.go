@@ -1,6 +1,7 @@
 package phantomjs_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -1032,6 +1033,39 @@ func TestWebPage_Open(t *testing.T) {
 	if err := page.Open(srv.URL); err != nil {
 		t.Fatal(err)
 	} else if content := page.Content(); content != `<html><head></head><body>OK</body></html>` {
+		t.Fatalf("unexpected content: %q", content)
+	}
+}
+
+// Ensure web page can reload a web page.
+func TestWebPage_Reload(t *testing.T) {
+	// Serve web page.
+	var counter int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		counter++
+		fmt.Fprintf(w, "<html><head></head><body>%d</body></html>", counter)
+	}))
+	defer srv.Close()
+
+	// Start process.
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	// Create & open page.
+	page := p.CreateWebPage()
+	defer page.Close()
+	if err := page.Open(srv.URL); err != nil {
+		t.Fatal(err)
+	}
+
+	// First time the counter should be 1.
+	if content := page.Content(); content != `<html><head></head><body>1</body></html>` {
+		t.Fatalf("unexpected content: %q", content)
+	}
+
+	// Reload the page and the counter should increment.
+	page.Reload()
+	if content := page.Content(); content != `<html><head></head><body>2</body></html>` {
 		t.Fatalf("unexpected content: %q", content)
 	}
 }

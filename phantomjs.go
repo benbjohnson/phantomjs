@@ -753,16 +753,8 @@ func (p *WebPage) InjectJS(filename string) error {
 	return nil
 }
 
-func (p *WebPage) OpenURL() {
-	panic("TODO")
-}
-
-func (p *WebPage) Release() {
-	panic("TODO")
-}
-
 func (p *WebPage) Reload() {
-	panic("TODO")
+	p.ref.process.mustDoJSON("POST", "/webpage/Reload", map[string]interface{}{"ref": p.ref.id}, nil)
 }
 
 func (p *WebPage) RenderBase64() {
@@ -1099,6 +1091,7 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/Go': return handleWebpageGo(request, response);
 			case '/webpage/IncludeJS': return handleWebpageIncludeJS(request, response);
 			case '/webpage/InjectJS': return handleWebpageInjectJS(request, response);
+			case '/webpage/Reload': return handleWebpageReload(request, response);
 			default: return handleNotFound(request, response);
 		}
 	} catch(e) {
@@ -1533,6 +1526,13 @@ function handleWebpageInjectJS(request, response) {
 	var page = ref(msg.ref);
 	var returnValue = page.injectJs(msg.filename);
 	response.write(JSON.stringify({returnValue: returnValue}));
+	response.closeGracefully();
+}
+
+function handleWebpageReload(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.reload();
 	response.closeGracefully();
 }
 
