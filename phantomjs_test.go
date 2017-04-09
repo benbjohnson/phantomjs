@@ -1259,6 +1259,62 @@ func TestWebPage_SwitchToFocusedFrame(t *testing.T) {
 	}
 }
 
+// Ensure web page can upload a file to a form field.
+func TestWebPage_UploadFile(t *testing.T) {
+	// Mock external HTTP server.
+	uploadData := make(chan []byte, 0)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			w.Write([]byte(`<html><body><form id="myForm" method="POST" enctype="multipart/form-data"><input type="file" name="myfile"/></form></body></html>`))
+		case "POST":
+			f, _, err := r.FormFile("myfile")
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			buf, err := ioutil.ReadAll(f)
+			if err != nil {
+				t.Fatal(err)
+			}
+			uploadData <- buf
+
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	}))
+	defer srv.Close()
+
+	// Start process.
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	// Create & open page.
+	page := p.CreateWebPage()
+	defer page.Close()
+	if err := page.Open(srv.URL); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write file to disk.
+	path := filepath.Join(p.Path(), "testfile")
+	if err := ioutil.WriteFile(path, []byte("TESTDATA"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Upload to field
+	page.UploadFile("input[name=myfile]", path)
+
+	// Submit form.
+	page.Evaluate(`function() { document.body.querySelector("#myForm").submit() }`)
+
+	// Wait for upload.
+	buf := <-uploadData
+	if string(buf) != "TESTDATA" {
+		t.Fatalf("unexpected upload data: %s", buf)
+	}
+}
+
 // Process is a test wrapper for phantomjs.Process.
 type Process struct {
 	*phantomjs.Process

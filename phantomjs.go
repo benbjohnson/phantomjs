@@ -840,8 +840,9 @@ func (p *WebPage) SwitchToParentFrame() {
 	p.ref.process.mustDoJSON("POST", "/webpage/SwitchToParentFrame", map[string]interface{}{"ref": p.ref.id}, nil)
 }
 
-func (p *WebPage) UploadFile() {
-	panic("TODO")
+// UploadFile uploads a file to a form element specified by selector.
+func (p *WebPage) UploadFile(selector, filename string) {
+	p.ref.process.mustDoJSON("POST", "/webpage/UploadFile", map[string]interface{}{"ref": p.ref.id, "selector": selector, "filename": filename}, nil)
 }
 
 // OpenWebPageSettings represents the settings object passed to WebPage.Open().
@@ -1134,6 +1135,7 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/SwitchToFramePosition': return handleWebpageSwitchToFramePosition(request, response);
 			case '/webpage/SwitchToMainFrame': return handleWebpageSwitchToMainFrame(request, response);
 			case '/webpage/SwitchToParentFrame': return handleWebpageSwitchToParentFrame(request, response);
+			case '/webpage/UploadFile': return handleWebpageUploadFile(request, response);
 			default: return handleNotFound(request, response);
 		}
 	} catch(e) {
@@ -1639,6 +1641,13 @@ function handleWebpageSwitchToParentFrame(request, response) {
 	var msg = JSON.parse(request.post);
 	var page = ref(msg.ref);
 	page.switchToParentFrame();
+	response.closeGracefully();
+}
+
+function handleWebpageUploadFile(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.uploadFile(msg.selector, msg.filename);
 	response.closeGracefully();
 }
 
