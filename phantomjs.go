@@ -640,8 +640,15 @@ func (p *WebPage) SetZoomFactor(factor float64) {
 	p.ref.process.mustDoJSON("POST", "/webpage/SetZoomFactor", map[string]interface{}{"ref": p.ref.id, "value": factor}, nil)
 }
 
-func (p *WebPage) AddCookie() {
-	panic("TODO")
+// AddCookie adds a cookie to the page.
+// Returns true if the cookie was successfully added.
+func (p *WebPage) AddCookie(cookie *http.Cookie) bool {
+	var resp struct {
+		ReturnValue bool `json:"returnValue"`
+	}
+	req := map[string]interface{}{"ref": p.ref.id, "cookie": encodeCookieJSON(cookie)}
+	p.ref.process.mustDoJSON("POST", "/webpage/AddCookie", req, &resp)
+	return resp.ReturnValue
 }
 
 func (p *WebPage) ChildFramesCount() {
@@ -1041,6 +1048,7 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/ZoomFactor': return handleWebpageZoomFactor(request, response);
 			case '/webpage/SetZoomFactor': return handleWebpageSetZoomFactor(request, response);
 
+			case '/webpage/AddCookie': return handleWebpageAddCookie(request, response);
 			case '/webpage/SwitchToFrameName': return handleWebpageSwitchToFrameName(request, response);
 			case '/webpage/SwitchToFramePosition': return handleWebpageSwitchToFramePosition(request, response);
 			case '/webpage/Open': return handleWebpageOpen(request, response);
@@ -1351,6 +1359,14 @@ function handleWebpageSetZoomFactor(request, response) {
 	response.closeGracefully();
 }
 
+
+function handleWebpageAddCookie(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	var returnValue = page.addCookie(msg.cookie);
+	response.write(JSON.stringify({returnValue: returnValue}));
+	response.closeGracefully();
+}
 
 function handleWebpageSwitchToFrameName(request, response) {
 	var msg = JSON.parse(request.post);

@@ -713,6 +713,37 @@ func TestWebPage_ZoomFactor(t *testing.T) {
 	}
 }
 
+// Ensure process can add a cookie to the page.
+func TestWebPage_AddCookie(t *testing.T) {
+	p := MustOpenNewProcess()
+	defer p.MustClose()
+
+	page := p.CreateWebPage()
+	defer page.Close()
+
+	// Test data.
+	cookie := &http.Cookie{
+		Domain:   ".example1.com",
+		HttpOnly: true,
+		Name:     "NAME1",
+		Path:     "/",
+		Secure:   true,
+		Value:    "VALUE1",
+	}
+
+	// Add the cookie.
+	if !page.AddCookie(cookie) {
+		t.Fatal("could not add cookie")
+	}
+
+	// Retrieve and verify the cookies.
+	if other := page.Cookies(); len(other) != 1 {
+		t.Fatalf("unexpected cookie count: %d", len(other))
+	} else if !reflect.DeepEqual(other[0], cookie) {
+		t.Fatalf("unexpected cookie(0): %#v", other)
+	}
+}
+
 // Ensure web page can open a URL.
 func TestWebPage_Open(t *testing.T) {
 	// Serve web page.
