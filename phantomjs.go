@@ -83,7 +83,6 @@ func (p *Process) Open() error {
 
 		// Start external process.
 		cmd := exec.Command(p.BinPath, scriptPath)
-		cmd.Dir = p.Path()
 		cmd.Env = []string{fmt.Sprintf("PORT=%d", p.Port)}
 		cmd.Stdout = p.Stdout
 		cmd.Stderr = p.Stderr
@@ -234,6 +233,15 @@ func (p *Process) doJSON(method, path string, req, resp interface{}) error {
 
 type errorResponse struct {
 	Error string `json:"error"`
+}
+
+// DefaultProcess is a global, shared process.
+// It must be opened before use.
+var DefaultProcess = NewProcess()
+
+// CreateWebPage returns a new instance of a "webpage" using the default process.
+func CreateWebPage() (*WebPage, error) {
+	return DefaultProcess.CreateWebPage()
 }
 
 // WebPage represents an object returned from "webpage.create()".
