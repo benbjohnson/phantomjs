@@ -83,7 +83,7 @@ func (p *Process) Open() error {
 
 		// Start external process.
 		cmd := exec.Command(p.BinPath, scriptPath)
-		cmd.Env = []string{fmt.Sprintf("PORT=%d", p.Port)}
+		cmd.Env = append(os.Environ(), fmt.Sprintf("PORT=%d", p.Port))
 		cmd.Stdout = p.Stdout
 		cmd.Stderr = p.Stderr
 		if err := cmd.Start(); err != nil {
