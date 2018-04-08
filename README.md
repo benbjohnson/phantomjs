@@ -1,5 +1,5 @@
 ## deprecation warning
-active phantomjs development as ended, in favor of using Chrome's new headless functionality ([reference](https://groups.google.com/forum/#!msg/phantomjs/9aI5d-LDuNE/5Z3SMZrqAQAJ)). Instead of using this library, consider using a go package that uses this new api such as [chromedp](https://github.com/chromedp/chromedp).
+active phantomjs development has ended, in favor of using Chrome's new headless functionality ([reference](https://groups.google.com/forum/#!msg/phantomjs/9aI5d-LDuNE/5Z3SMZrqAQAJ)). Instead of using this library, consider using a go package that uses this new api such as [chromedp](https://github.com/chromedp/chromedp).
 
 phantomjs [![godoc](https://godoc.org/github.com/benbjohnson/phantomjs?status.svg)](https://godoc.org/github.com/benbjohnson/phantomjs) ![Status](https://img.shields.io/badge/status-beta-yellow.svg)
 =========
