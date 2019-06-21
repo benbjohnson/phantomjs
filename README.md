@@ -140,3 +140,40 @@ if err := page.Render("hackernews.png", "png", 100); err != nil {
 You can also use the `RenderBase64()` to return a base64 encoded image to your
 program instead of writing the file to disk.
 
+### Via proxy
+
+You can via proxy with `phantomjs.SetProxy` | `page.SetProxy`  function or `page.SetSettings` with `proxy` omitempty.
+
+Usage
+
+```go
+p := phantomjs.DefaultProcess
+if err := p.Open(); err != nil {
+	fmt.Println(err)
+	os.Exit(1)
+}
+defer phantomjs.DefaultProcess.Close()
+
+// p.SetProxy(host_or_IP, port, proxy_type, user_name, password)
+p.SetProxy("8.8.8.8", "8888", "socks5", "", "")
+
+page, err := p.CreateWebPage()
+if err != nil {
+	fmt.Println(err)
+	return
+}
+defer page.Close()
+
+page.SetProxy("socks5://8.8.8.8:8888")
+
+page.SetSettings(phantomjs.WebPageSettings{
+	Proxy: "socks5://8.8.8.8:8888",
+})
+```
+
+priority order: `page.SetSettings` > `page.SetProxy` > `phantomjs.SetProxy`
+
+
+
+
+
