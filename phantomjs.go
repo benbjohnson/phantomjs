@@ -125,6 +125,29 @@ func (p *Process) Close() (err error) {
 	return err
 }
 
+// SetProxy set the process proxy
+// host_or_IP, port, proxy_type, user_name, password
+func (p *Process) SetProxy(hostOrIP, port, proxyType, userName, password string) (err error) {
+	if p.cmd == nil {
+		err = errors.New("process is closed")
+		return
+	}
+
+	req := map[string]interface{}{
+		"host_or_IP": hostOrIP,
+		"port":       port,
+		"proxy_type": proxyType,
+		"user_name":  userName,
+		"password":   password,
+	}
+
+	if err = p.doJSON("POST", "/phantomjs/SetProxy", req, nil); err != nil {
+		return err
+	}
+
+	return
+}
+
 // URL returns the process' API URL.
 func (p *Process) URL() string {
 	return fmt.Sprintf("http://localhost:%d", p.Port)
@@ -646,6 +669,7 @@ func (p *WebPage) Settings() (WebPageSettings, error) {
 		UserAgent:                     resp.Settings.UserAgent,
 		Username:                      resp.Settings.Username,
 		Password:                      resp.Settings.Password,
+		Proxy:                         resp.Settings.Proxy,
 		XSSAuditingEnabled:            resp.Settings.XSSAuditingEnabled,
 		WebSecurityEnabled:            resp.Settings.WebSecurityEnabled,
 		ResourceTimeout:               time.Duration(resp.Settings.ResourceTimeout) * time.Millisecond,
@@ -666,6 +690,7 @@ func (p *WebPage) SetSettings(settings WebPageSettings) error {
 			UserAgent:                     settings.UserAgent,
 			Username:                      settings.Username,
 			Password:                      settings.Password,
+			Proxy:                         settings.Proxy,
 			XSSAuditingEnabled:            settings.XSSAuditingEnabled,
 			WebSecurityEnabled:            settings.WebSecurityEnabled,
 			ResourceTimeout:               int(settings.ResourceTimeout / time.Millisecond),
@@ -711,6 +736,11 @@ func (p *WebPage) ViewportSize() (width, height int, err error) {
 // SetViewportSize sets the size of the viewport.
 func (p *WebPage) SetViewportSize(width, height int) error {
 	return p.ref.process.doJSON("POST", "/webpage/SetViewportSize", map[string]interface{}{"ref": p.ref.id, "width": width, "height": height}, nil)
+}
+
+// SetProxy sets the proxy of the web page.
+func (p *WebPage) SetProxy(proxy string) error {
+	return p.ref.process.doJSON("POST", "/webpage/SetProxy", map[string]interface{}{"ref": p.ref.id, "proxy": proxy}, nil)
 }
 
 // WindowName returns the window name of the web page.
@@ -1129,6 +1159,7 @@ type WebPageSettings struct {
 	UserAgent                     string
 	Username                      string
 	Password                      string
+	Proxy                         string
 	XSSAuditingEnabled            bool
 	WebSecurityEnabled            bool
 	ResourceTimeout               time.Duration
@@ -1141,6 +1172,7 @@ type webPageSettingsJSON struct {
 	UserAgent                     string `json:"userAgent"`
 	Username                      string `json:"username"`
 	Password                      string `json:"password"`
+	Proxy                         string `json:"proxy,omitempty"`
 	XSSAuditingEnabled            bool   `json:"XSSAuditingEnabled"`
 	WebSecurityEnabled            bool   `json:"webSecurityEnabled"`
 	ResourceTimeout               int    `json:"resourceTimeout"`
@@ -1161,6 +1193,7 @@ var server = webserver.create();
 server.listen(system.env["PORT"], function(request, response) {
 	try {
 		switch (request.url) {
+			case '/phantomjs/SetProxy': return handlePhantomjsSetProxy(request, response);
 			case '/ping': return handlePing(request, response);
 			case '/webpage/CanGoBack': return handleWebpageCanGoBack(request, response);
 			case '/webpage/CanGoForward': return handleWebpageCanGoForward(request, response);
@@ -1203,6 +1236,7 @@ server.listen(system.env["PORT"], function(request, response) {
 			case '/webpage/URL': return handleWebpageURL(request, response);
 			case '/webpage/ViewportSize': return handleWebpageViewportSize(request, response);
 			case '/webpage/SetViewportSize': return handleWebpageSetViewportSize(request, response);
+			case '/webpage/SetProxy': return handleWebpageSetProxy(request, response);
 			case '/webpage/WindowName': return handleWebpageWindowName(request, response);
 			case '/webpage/ZoomFactor': return handleWebpageZoomFactor(request, response);
 			case '/webpage/SetZoomFactor': return handleWebpageSetZoomFactor(request, response);
@@ -1242,6 +1276,13 @@ server.listen(system.env["PORT"], function(request, response) {
 		response.closeGracefully();
 	}
 });
+
+function handlePhantomjsSetProxy(request, response) {
+	var msg = JSON.parse(request.post)
+    phantom.setProxy(msg.host_or_IP, msg.port, msg.proxy_type, msg.user_name, msg.password);
+    response.write(JSON.stringify({}));
+	response.closeGracefully();
+}
 
 function handlePing(request, response) {
 	response.statusCode = 200;
@@ -1528,6 +1569,14 @@ function handleWebpageSetViewportSize(request, response) {
 	var msg = JSON.parse(request.post);
 	var page = ref(msg.ref);
 	page.viewportSize = {width: msg.width, height: msg.height};
+	response.write(JSON.stringify({}));
+	response.closeGracefully();
+}
+
+function handleWebpageSetProxy(request, response) {
+	var msg = JSON.parse(request.post);
+	var page = ref(msg.ref);
+	page.setProxy(msg.proxy);
 	response.write(JSON.stringify({}));
 	response.closeGracefully();
 }
