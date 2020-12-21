@@ -34,6 +34,11 @@ const (
 	DefaultBinPath = "phantomjs"
 )
 
+// TOptions PhantomJS Command-line Options
+type TOptions struct {
+	IgnoreSSLErrors bool
+}
+
 // Process represents a PhantomJS process.
 type Process struct {
 	path string
@@ -46,18 +51,35 @@ type Process struct {
 	Port int
 
 	// Output from the process.
-	Stdout io.Writer
-	Stderr io.Writer
+	Stdout  io.Writer
+	Stderr  io.Writer
+	Options TOptions
+}
+
+// ProcessOption process options handler
+type ProcessOption func(*Process)
+
+// WithIgnoreSSLErrors add ignore_ssl_errors options
+func WithIgnoreSSLErrors(ignore bool) ProcessOption {
+	return func(p *Process) {
+		p.Options.IgnoreSSLErrors = true
+	}
 }
 
 // NewProcess returns a new instance of Process.
-func NewProcess() *Process {
-	return &Process{
+func NewProcess(options ...ProcessOption) *Process {
+	process := &Process{
 		BinPath: DefaultBinPath,
 		Port:    DefaultPort,
 		Stdout:  os.Stdout,
 		Stderr:  os.Stderr,
 	}
+
+	for _, o := range options {
+		o(process)
+	}
+
+	return process
 }
 
 // Path returns a temporary path that the process is run from.
@@ -82,8 +104,13 @@ func (p *Process) Open() error {
 		}
 
 		// Start external process.
-		cmd := exec.Command(p.BinPath, scriptPath)
-		cmd.Env = []string{fmt.Sprintf("PORT=%d", p.Port)}
+		var args []string
+		if p.Options.IgnoreSSLErrors {
+			args = append(args, "--ignore-ssl-errors=true")
+		}
+		args = append(args, scriptPath)
+		cmd := exec.Command(p.BinPath, args...)
+		cmd.Env = append(os.Environ(), fmt.Sprintf("PORT=%d", p.Port))
 		cmd.Stdout = p.Stdout
 		cmd.Stderr = p.Stderr
 		if err := cmd.Start(); err != nil {
